@@ -1,0 +1,8 @@
+{
+  "_comment": "Campus-system-specific values. Everything else in src/ is driven by these.",
+  "displayName": "NORDAKADEMIE CIS",
+  "firefoxAddonId": "better-cis@localhost",
+  "origins": ["https://cis.nordakademie.de/*"],
+  "contentScriptMatches": ["https://cis.nordakademie.de/*"],
+  "defaultTimeZone": "Europe/Berlin"
+}

@@ -1,0 +1,597 @@
+BEGIN:VCALENDAR
+NAME:A23 2023 - Angewandte Informatik A23a
+PRODID:-//www.sked.de//EN
+X-SKED-VERSION-TERMINSYNC:3.0
+X-SKED-CODIERUNG:UTF-8 ohne BOM
+X-SKED-SYNC-DTSTART:20260727T000000
+X-SKED-SYNC-DTEND:20260925T000000
+X-SKED-LIZENZNEHMER:142
+X-SKED-RESSOURCE:222514
+X-WR-CALNAME:A23 2023 - Angewandte Informatik A23a
+X-PUBLISHED-TTL:PT10M
+REFRESH-INTERVAL;VALUE=DURATION:PT10M
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:Europe/Berlin
+BEGIN:DAYLIGHT
+TZNAME:CEST
+DTSTART:19960101T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+END:DAYLIGHT
+BEGIN:STANDARD
+TZNAME:CET
+DTSTART:19960101T020000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227350
+SUMMARY:WP WP Strat. Marketing-Projekt\,Prof. Dr. rer. pol. Kortmann\,inkl.
+  30 min Pause\,H008
+LOCATION:H008
+DESCRIPTION:Veranstaltung: WP WP Strat. Marketing-Projekt\nDozent: Prof. Dr
+ . rer. pol. Kortmann\nPause: inkl. 30 min Pause\nRaum: H008\nAnmerkung: -\
+ nStatus: -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227552
+SUMMARY:WP WP Mergers and Aquisitions\,Dr. Cordes\,inkl. 30 min Pause\,A005
+LOCATION:A005
+DESCRIPTION:Veranstaltung: WP WP Mergers and Aquisitions\nDozent: Dr. Corde
+ s\nPause: inkl. 30 min Pause\nRaum: A005\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227574
+SUMMARY:WP WP Digital Commerce\,Prof. Dr. oec. publ. Jansen\,inkl. 30 min P
+ ause\,D104
+LOCATION:D104
+DESCRIPTION:Veranstaltung: WP WP Digital Commerce\nDozent: Prof. Dr. oec. p
+ ubl. Jansen\nPause: inkl. 30 min Pause\nRaum: D104\nAnmerkung: -\nStatus: 
+ -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227601
+SUMMARY:WP WP Internationale Beziehungen\,Reinbold\,inkl. 30 min Pause\,A10
+ 4
+LOCATION:A104
+DESCRIPTION:Veranstaltung: WP WP Internationale Beziehungen\nDozent: Reinbo
+ ld\nPause: inkl. 30 min Pause\nRaum: A104\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227610
+SUMMARY:WP WP Gebäudeautomation\,Prof. Dr. habil. Lindqvist\,inkl. 30 min 
+ Pause\,A004 TI Labor
+LOCATION:A004 TI Labor
+DESCRIPTION:Veranstaltung: WP WP Gebäudeautomation\nDozent: Prof. Dr. habi
+ l. Lindqvist\nPause: inkl. 30 min Pause\nRaum: A004 TI Labor\nAnmerkung: -
+ \nStatus: -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227620
+SUMMARY:WP WP Techniken der Schwachstellenanalyse\,Dr.-Ing. Ueberall\,inkl.
+  30 min Pause\,B005 EDV\, B006 EDV\, C108
+LOCATION:B005 EDV\, B006 EDV\, C108
+DESCRIPTION:Veranstaltung: WP WP Techniken der Schwachstellenanalyse\nDozen
+ t: Dr.-Ing. Ueberall\nPause: inkl. 30 min Pause\nRaum: B005 EDV\, B006 EDV
+ \, C108\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260727T140000
+DTEND;TZID=Europe/Berlin:20260727T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224935
+SUMMARY:V I177 Englisch\,Gerlach\,D103
+LOCATION:D103
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Gerlach\nPause: -\nRaum
+ : D103\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260728T091500
+DTEND;TZID=Europe/Berlin:20260728T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224944
+SUMMARY:V I177 Englisch\,Ehlers\,F008
+LOCATION:F008
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Ehlers\nPause: -\nRaum:
+  F008\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260728T091500
+DTEND;TZID=Europe/Berlin:20260728T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224953
+SUMMARY:V I177 Englisch\,Pfeiffer\,C108
+LOCATION:C108
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Pfeiffer\nPause: -\nRau
+ m: C108\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260728T091500
+DTEND;TZID=Europe/Berlin:20260728T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de231110
+SUMMARY:V A113 Usability Engineering\,Prof. Dr. phil. Iversen\,inkl. 15 min
+  Pause\,A005
+LOCATION:A005
+DESCRIPTION:Veranstaltung: V A113 Usability Engineering\nDozent: Prof. Dr. 
+ phil. Iversen\nPause: inkl. 15 min Pause\nRaum: A005\nAnmerkung: -\nStatus
+ : -
+DTSTART;TZID=Europe/Berlin:20260729T081500
+DTEND;TZID=Europe/Berlin:20260729T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230296
+SUMMARY:V A106 IT-Sicherheit\,Prof. Dr.-Ing. Wichmann\,inkl. 15 min Pause\,
+ A104
+LOCATION:A104
+DESCRIPTION:Veranstaltung: V A106 IT-Sicherheit\nDozent: Prof. Dr.-Ing. Wic
+ hmann\nPause: inkl. 15 min Pause\nRaum: A104\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T110000
+DTEND;TZID=Europe/Berlin:20260729T133000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227329
+SUMMARY:WP WP Arbeitsrecht\,Ostermann\,inkl. 30 min Pause\,A005
+LOCATION:A005
+DESCRIPTION:Veranstaltung: WP WP Arbeitsrecht\nDozent: Ostermann\nPause: in
+ kl. 30 min Pause\nRaum: A005\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T140000
+DTEND;TZID=Europe/Berlin:20260729T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227403
+SUMMARY:WP WP Systematische Markenentwicklung im B2B\,Prof. Dr. rer. pol. K
+ ortmann\, Sonnleitner\, Ashcombe\, Dunmore\,inkl. 30 min Pause\,F107
+LOCATION:F107
+DESCRIPTION:Veranstaltung: WP WP Systematische Markenentwicklung im B2B\nDo
+ zent: Prof. Dr. rer. pol. Kortmann\, Sonnleitner\, Ashcombe\, Dunmore\nPau
+ se: inkl. 30 min Pause\nRaum: F107\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T140000
+DTEND;TZID=Europe/Berlin:20260729T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227415
+SUMMARY:WP WP Wirtschaftspsychologie\,Meinhardt\,inkl. 30 min Pause\,H007
+LOCATION:H007
+DESCRIPTION:Veranstaltung: WP WP Wirtschaftspsychologie\nDozent: Meinhardt\
+ nPause: inkl. 30 min Pause\nRaum: H007\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T140000
+DTEND;TZID=Europe/Berlin:20260729T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227543
+SUMMARY:WP WP KI und Management\,Prof. Dr. Hasenclever\,inkl. 30 min Pause\
+ ,F008
+LOCATION:F008
+DESCRIPTION:Veranstaltung: WP WP KI und Management\nDozent: Prof. Dr. Hasen
+ clever\nPause: inkl. 30 min Pause\nRaum: F008\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T140000
+DTEND;TZID=Europe/Berlin:20260729T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227656
+SUMMARY:WP WP Rapid Innovation\,Vandenberg\,inkl. 30 min Pause\,H006
+LOCATION:H006
+DESCRIPTION:Veranstaltung: WP WP Rapid Innovation\nDozent: Vandenberg\nPaus
+ e: inkl. 30 min Pause\nRaum: H006\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260729T140000
+DTEND;TZID=Europe/Berlin:20260729T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230306
+SUMMARY:V A118 Wiss.Arb.2\,Prof. Dr.-Ing. Calloway\,inkl. 15 min Pause\,A10
+ 5
+LOCATION:A105
+DESCRIPTION:Veranstaltung: V A118 Wiss.Arb.2\nDozent: Prof. Dr.-Ing. Callow
+ ay\nPause: inkl. 15 min Pause\nRaum: A105\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260730T091500
+DTEND;TZID=Europe/Berlin:20260730T123000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227534
+SUMMARY:WP WP International Marketing Management\,Prof. Dr. phil. Dettmer\,
+ inkl. 30 min Pause\,H007
+LOCATION:H007
+DESCRIPTION:Veranstaltung: WP WP International Marketing Management\nDozent
+ : Prof. Dr. phil. Dettmer\nPause: inkl. 30 min Pause\nRaum: H007\nAnmerkun
+ g: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260730T140000
+DTEND;TZID=Europe/Berlin:20260730T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227583
+SUMMARY:WP WP Nachhaltigkeit in der Wertschöpfungskette\,Baumgart\,inkl. 3
+ 0 min Pause\,C108
+LOCATION:C108
+DESCRIPTION:Veranstaltung: WP WP Nachhaltigkeit in der Wertschöpfungskette
+ \nDozent: Baumgart\nPause: inkl. 30 min Pause\nRaum: C108\nAnmerkung: -\nS
+ tatus: -
+DTSTART;TZID=Europe/Berlin:20260730T140000
+DTEND;TZID=Europe/Berlin:20260730T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227592
+SUMMARY:WP WP Ausgewählte Aspekte des Controllings\,Dr. rer. pol. Braithwa
+ ite\,inkl. 30 min Pause\,H006
+LOCATION:H006
+DESCRIPTION:Veranstaltung: WP WP Ausgewählte Aspekte des Controllings\nDoz
+ ent: Dr. rer. pol. Braithwaite\nPause: inkl. 30 min Pause\nRaum: H006\nAnm
+ erkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260730T140000
+DTEND;TZID=Europe/Berlin:20260730T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227647
+SUMMARY:WP WP Agilität - von Scrum bis Business Agility\,Prof. Dr.-Ing. No
+ rrington\,inkl. 30 min Pause\,F008\, H107 Lernspace
+LOCATION:F008\, H107 Lernspace
+DESCRIPTION:Veranstaltung: WP WP Agilität - von Scrum bis Business Agility
+ \nDozent: Prof. Dr.-Ing. Norrington\nPause: inkl. 30 min Pause\nRaum: F008
+ \, H107 Lernspace\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260730T140000
+DTEND;TZID=Europe/Berlin:20260730T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227561
+SUMMARY:WP WP Digitale Geschäftsprozesse\,Dipl.-Wirtsch.-Ing. (FH) Fahrenk
+ rog\,inkl. 30 min Pause\,A103
+LOCATION:A103
+DESCRIPTION:Veranstaltung: WP WP Digitale Geschäftsprozesse\nDozent: Dipl.
+ -Wirtsch.-Ing. (FH) Fahrenkrog\nPause: inkl. 30 min Pause\nRaum: A103\nAnm
+ erkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260730T140000
+DTEND;TZID=Europe/Berlin:20260730T194000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230534
+SUMMARY:V A107 Programmierparadigmen\,Prof. Dr. rer. nat. Ziegler\,inkl. 15
+  min Pause\,A006
+LOCATION:A006
+DESCRIPTION:Veranstaltung: V A107 Programmierparadigmen\nDozent: Prof. Dr. 
+ rer. nat. Ziegler\nPause: inkl. 15 min Pause\nRaum: A006\nAnmerkung: -\nSt
+ atus: -
+DTSTART;TZID=Europe/Berlin:20260731T083000
+DTEND;TZID=Europe/Berlin:20260731T114500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de225262
+SUMMARY:V I148 Internet Anwendungsarchitekturen\,Achterberg\,inkl. 15 min P
+ ause\,Onlinevorlesung
+LOCATION:
+DESCRIPTION:Veranstaltung: V I148 Internet Anwendungsarchitekturen\nDozent:
+  Achterberg\nPause: inkl. 15 min Pause\nRaum: -\nAnmerkung: -\nStatus: Onl
+ inevorlesung
+DTSTART;TZID=Europe/Berlin:20260731T124500
+DTEND;TZID=Europe/Berlin:20260731T151500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230136
+SUMMARY:V A114 Software Engineering\,Prof. Dr. rer. nat. Thurgood\,inkl. 15
+  min Pause\,D104
+LOCATION:D104
+DESCRIPTION:Veranstaltung: V A114 Software Engineering\nDozent: Prof. Dr. r
+ er. nat. Thurgood\nPause: inkl. 15 min Pause\nRaum: D104\nAnmerkung: -\nSt
+ atus: -
+DTSTART;TZID=Europe/Berlin:20260803T091500
+DTEND;TZID=Europe/Berlin:20260803T130000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230144
+SUMMARY:Z Zenturienbetreuung\,Prof. Dr. rer. nat. Thurgood\,D104
+LOCATION:D104
+DESCRIPTION:Veranstaltung: Z Zenturienbetreuung\nDozent: Prof. Dr. rer. nat
+ . Thurgood\nPause: -\nRaum: D104\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T130000
+DTEND;TZID=Europe/Berlin:20260803T131500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227351
+SUMMARY:WP WP Strat. Marketing-Projekt\,Prof. Dr. rer. pol. Kortmann\,inkl.
+  30 min Pause\,H008
+LOCATION:H008
+DESCRIPTION:Veranstaltung: WP WP Strat. Marketing-Projekt\nDozent: Prof. Dr
+ . rer. pol. Kortmann\nPause: inkl. 30 min Pause\nRaum: H008\nAnmerkung: -\
+ nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T140000
+DTEND;TZID=Europe/Berlin:20260803T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227553
+SUMMARY:WP WP Mergers and Aquisitions\,Dr. Cordes\,inkl. 30 min Pause\,A005
+LOCATION:A005
+DESCRIPTION:Veranstaltung: WP WP Mergers and Aquisitions\nDozent: Dr. Corde
+ s\nPause: inkl. 30 min Pause\nRaum: A005\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T140000
+DTEND;TZID=Europe/Berlin:20260803T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227602
+SUMMARY:WP WP Internationale Beziehungen\,Dr. Quandt\,inkl. 30 min Pause\,H
+ 106
+LOCATION:H106
+DESCRIPTION:Veranstaltung: WP WP Internationale Beziehungen\nDozent: Dr. Qu
+ andt\nPause: inkl. 30 min Pause\nRaum: H106\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T140000
+DTEND;TZID=Europe/Berlin:20260803T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227611
+SUMMARY:WP WP Gebäudeautomation\,Prof. Dr. habil. Lindqvist\,inkl. 30 min 
+ Pause\,A004 TI Labor
+LOCATION:A004 TI Labor
+DESCRIPTION:Veranstaltung: WP WP Gebäudeautomation\nDozent: Prof. Dr. habi
+ l. Lindqvist\nPause: inkl. 30 min Pause\nRaum: A004 TI Labor\nAnmerkung: -
+ \nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T140000
+DTEND;TZID=Europe/Berlin:20260803T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de227621
+SUMMARY:WP WP Techniken der Schwachstellenanalyse\,Dr.-Ing. Ueberall\,inkl.
+  30 min Pause\,B005 EDV\, B006 EDV\, C108
+LOCATION:B005 EDV\, B006 EDV\, C108
+DESCRIPTION:Veranstaltung: WP WP Techniken der Schwachstellenanalyse\nDozen
+ t: Dr.-Ing. Ueberall\nPause: inkl. 30 min Pause\nRaum: B005 EDV\, B006 EDV
+ \, C108\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260803T140000
+DTEND;TZID=Europe/Berlin:20260803T190000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224936
+SUMMARY:V I177 Englisch\,Gerlach\,D103
+LOCATION:D103
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Gerlach\nPause: -\nRaum
+ : D103\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260804T091500
+DTEND;TZID=Europe/Berlin:20260804T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224945
+SUMMARY:V I177 Englisch\,Ehlers\,F008
+LOCATION:F008
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Ehlers\nPause: -\nRaum:
+  F008\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260804T091500
+DTEND;TZID=Europe/Berlin:20260804T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de224954
+SUMMARY:V I177 Englisch\,Pfeiffer\,C108
+LOCATION:C108
+DESCRIPTION:Veranstaltung: V I177 Englisch\nDozent: Pfeiffer\nPause: -\nRau
+ m: C108\nAnmerkung: -\nStatus: -
+DTSTART;TZID=Europe/Berlin:20260804T091500
+DTEND;TZID=Europe/Berlin:20260804T104500
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260731T123416Z
+TRANSP:OPAQUE
+SEQUENCE:0
+UID:sked.de230536
+SUMMARY:V A107 Programmierparadigmen\,Prof. Dr. rer. nat. Ziegler\,inkl. 15
+  min Pause\,H101
+LOCATION:H101
+DESCRIPTION:Veranstaltung: V A107 Programmierparadigmen\nDozent: Prof. Dr. 
+ rer. nat. Ziegler\nPause: inkl. 15 min Pause\nRaum: H101\nAnmerkung: -\nSt
+ atus: -
+DTSTART;TZID=Europe/Berlin:20260804T121500
+DTEND;TZID=Europe/Berlin:20260804T153000
+PRIORITY:5
+CLASS:PUBLIC
+CATEGORIES:sked.de
+END:VEVENT
+END:VCALENDAR
