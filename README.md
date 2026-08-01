@@ -120,6 +120,41 @@ Fetches a real published plan, embeds it, and renders the calendar in a page
 you can open from disk. Three buttons cover first run, a selected timetable,
 and a week containing changes. Faster than the unpacked-extension reload cycle.
 
+## Releases
+
+`.github/workflows/ci.yml` does two things.
+
+**On every push and pull request** it typechecks, runs the tests, builds, and
+runs Mozilla's validator over the Firefox output. Pull requests also get the
+built archives attached as artifacts, so a change can be loaded in a browser
+before it is merged.
+
+**On every push to `main`** it additionally bumps the patch version, commits
+that, tags it, and publishes a GitHub Release with all three archives and a
+`SHA256SUMS.txt`.
+
+A few things about it that are deliberate:
+
+- **The version is bumped before the build**, because the manifests read their
+  version from `package.json` at build time. A step afterwards asserts that
+  both built manifests actually carry the new version — otherwise a release
+  could ship contents that disagree with its own tag.
+- **It cannot loop.** Pushes authenticated with the built-in `GITHUB_TOKEN` do
+  not trigger workflows. The commit message also carries `[skip ci]`, which
+  would stop it independently.
+- **Releases are serialised** (`concurrency: release`, no cancellation). Two
+  pushes in quick succession queue rather than race, so the second bumps from
+  the version the first pushed instead of colliding on a tag.
+- **Only the release job can write.** The workflow's default permission is
+  `contents: read`.
+
+Every push to `main` produces a release, including documentation-only commits.
+To skip those, add to the `push` trigger:
+
+```yaml
+    paths-ignore: ['**.md', 'docs/**']
+```
+
 ## Layout
 
 ```

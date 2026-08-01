@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Only the release job writes; verification never needs more than read.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, test, lint
+    runs-on: ubuntu-latest
+    concurrency:
+      group: verify-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 24 runs TypeScript test files directly via type stripping,
+          # which is why there is no compile step before `npm test`.
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate the Firefox build
+        # Mozilla's own validator. Catches manifest problems that only surface
+        # at install time, which is far too late to find out.
+        run: npm run lint:firefox
+
+      - name: Package
+        run: npm run package
+
+      # So a pull request can be downloaded and actually loaded in a browser
+      # before it is merged.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: better-cis-${{ github.sha }}
+          path: |
+            dist/better-cis-chrome.zip
+            dist/better-cis-firefox.xpi
+            dist/better-cis-firefox.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Tag and release
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Never cancel a release midway, and never run two at once: each one bumps
+    # the version and pushes a tag. Queued runs check out *after* the running
+    # one has pushed, so they bump from the current version rather than a stale
+    # one and cannot collide on a tag.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so release notes can be generated against the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Bump the patch version
+        id: version
+        run: |
+          # The manifests take their version from package.json at build time,
+          # so this has to happen before the build, not after.
+          npm version patch --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION"
+
+      - name: Build and package
+        run: npm run package
+
+      - name: Check the built manifests carry the new version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Guards against the build silently shipping a stale version, which
+          # would produce a release whose contents do not match its tag.
+          for target in chrome firefox; do
+            built="$(node -p "require('./dist/$target/manifest.json').version")"
+            if [ "$built" != "$VERSION" ]; then
+              echo "::error::$target manifest says $built, expected $VERSION"
+              exit 1
+            fi
+            echo "  $target manifest: $built"
+          done
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum better-cis-chrome.zip better-cis-firefox.xpi better-cis-firefox.zip > SHA256SUMS.txt
+
+      - name: Commit and tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          # `[skip ci]` is belt and braces: pushes authenticated with the
+          # built-in GITHUB_TOKEN do not trigger workflows, so this cannot loop
+          # even without it.
+          git commit -m "chore: release $TAG [skip ci]"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin HEAD:main --follow-tags
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # Lead with which file to install — the archives are not
+          # interchangeable and picking the wrong one fails confusingly.
+          {
+            echo '### Install'
+            echo
+            echo '| Browser | File |'
+            echo '| --- | --- |'
+            echo '| Chrome / Edge | `better-cis-chrome.zip` — unzip, then `chrome://extensions` → Developer mode → Load unpacked |'
+            echo '| Firefox / Zen | `better-cis-firefox.xpi` — drag onto the browser window |'
+            echo '| AMO upload | `better-cis-firefox.zip` |'
+            echo
+            echo 'Verify with `sha256sum -c SHA256SUMS.txt`.'
+            echo
+            gh api "repos/${{ github.repository }}/releases/generate-notes" \
+              -f tag_name="$TAG" --jq .body
+          } > release-notes.md
+
+          gh release create "$TAG" \
+            dist/better-cis-chrome.zip \
+            dist/better-cis-firefox.xpi \
+            dist/better-cis-firefox.zip \
+            dist/SHA256SUMS.txt \
+            --title "$TAG" \
+            --notes-file release-notes.md
