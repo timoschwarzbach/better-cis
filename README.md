@@ -302,8 +302,22 @@ A few things about it that are deliberate:
 test, a `--dry-run` bundle to catch a broken cross-package import, then
 `wrangler deploy` on every push to `master` that actually changes it. It is kept
 out of `ci.yml` so a Cloudflare outage can never block an extension release.
-Without a `CLOUDFLARE_API_TOKEN` secret the deploy step reports a notice and
-skips, so forks stay green.
+
+**It needs credentials before it can do anything.** One-time setup:
+
+```sh
+# Cloudflare dashboard → My Profile → API Tokens → Create Token
+#   → template "Edit Cloudflare Workers"
+gh secret set CLOUDFLARE_API_TOKEN
+gh secret set CLOUDFLARE_ACCOUNT_ID   # dashboard → Workers & Pages → Account ID
+```
+
+Until those exist the workflow verifies and then **fails** at the deploy step,
+with the setup instructions in the run summary. It failing is the point: the
+first version of this skipped quietly with a green tick, which meant a push
+could report success while the worker was never updated. On a fork it still
+skips quietly and stays green — nobody expects someone else's clone to hold
+deploy credentials.
 
 **Change detection is on the artifact, not the paths that produced it.** The
 path filter is only a cheap first gate: it matches all of `src/lib/`, but the

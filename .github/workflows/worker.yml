@@ -122,17 +122,42 @@ jobs:
 
       - name: Deploy to Cloudflare
         id: run
-        # Skipped rather than failed when no token is configured: a fork, or a
-        # clone by someone who has not deployed an instance, should still see a
-        # green build.
         if: steps.deployed.outputs.cache-hit != 'true' || inputs.force
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BUNDLE: ${{ needs.verify.outputs.bundle }}
+          IS_FORK: ${{ github.event.repository.fork }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::notice::CLOUDFLARE_API_TOKEN is not set — skipping deploy."
+            # On a fork this is expected: nobody expects someone else's clone to
+            # hold deploy credentials, and a red build there is just noise.
+            #
+            # On the repository that owns the endpoint it is a failure, and a
+            # quiet one is the worst kind — the workflow goes green, the run says
+            # "success", and the worker is simply never updated. Ask how this is
+            # known: it was missed exactly once before this branch existed.
+            if [ "$IS_FORK" != "true" ]; then
+              {
+                echo "### Worker not deployed"
+                echo
+                echo 'No `CLOUDFLARE_API_TOKEN` secret is configured, so there is nothing to authenticate with.'
+                echo
+                echo '```sh'
+                echo '# Cloudflare dashboard → My Profile → API Tokens → Create Token'
+                echo '#   → template "Edit Cloudflare Workers"'
+                echo 'gh secret set CLOUDFLARE_API_TOKEN'
+                echo 'gh secret set CLOUDFLARE_ACCOUNT_ID   # dashboard → Workers & Pages → Account ID'
+                echo '```'
+                echo
+                echo 'Then re-run this workflow, or push again.'
+              } >> "$GITHUB_STEP_SUMMARY"
+
+              echo "::error::CLOUDFLARE_API_TOKEN is not set — the worker was NOT deployed. See the run summary for how to configure it."
+              exit 1
+            fi
+
+            echo "::notice::CLOUDFLARE_API_TOKEN is not set — skipping deploy on a fork."
             exit 0
           fi
 
