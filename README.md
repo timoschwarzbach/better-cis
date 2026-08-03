@@ -129,7 +129,7 @@ runs Mozilla's validator over the Firefox output. Pull requests also get the
 built archives attached as artifacts, so a change can be loaded in a browser
 before it is merged.
 
-**On every push to `main`** it additionally bumps the patch version, commits
+**On every push to `master`** it additionally bumps the patch version, commits
 that, tags it, and publishes a GitHub Release with all three archives and a
 `SHA256SUMS.txt`.
 
@@ -148,7 +148,7 @@ A few things about it that are deliberate:
 - **Only the release job can write.** The workflow's default permission is
   `contents: read`.
 
-Every push to `main` produces a release, including documentation-only commits.
+Every push to `master` produces a release, including documentation-only commits.
 To skip those, add to the `push` trigger:
 
 ```yaml

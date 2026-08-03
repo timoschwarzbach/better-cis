@@ -1,0 +1,113 @@
+name: Bug report
+description: Something the extension does that it should not, or fails to do.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two behaviours look like bugs but are deliberate, and are documented in
+        [the README](https://github.com/StaticFX/better-cis#two-behaviours-that-look-like-bugs-but-are-not):
+
+        - **A refresh that returns far fewer events reports no changes** and keeps the
+          old snapshot, rather than treating a truncated download as a cancelled term.
+        - **The very first sync reports no changes.** There is nothing to compare against yet.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: This is not one of the two documented behaviours above.
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: "`chrome://extensions`, or `about:addons` → the gear → the add-on's details."
+      placeholder: "0.1.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Edge
+        - Firefox
+        - Zen
+        - LibreWolf
+        - Other Chromium-based
+        - Other Firefox-based
+    validations:
+      required: true
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser version
+      placeholder: "Firefox 141.0"
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where it happens
+      options:
+        - The CIS homepage widget
+        - A CIS plan page
+        - The extension's popup or badge
+        - The preview harness (scripts/preview-page.mjs)
+        - Building, packaging or installing
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Screenshots help — the calendar is a visual thing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open https://cis.nordakademie.de/
+        2. Tick "V I177 Englisch", group 2
+        3. Page forward one week
+        4. …
+    validations:
+      required: true
+
+  - type: input
+    id: plan
+    attributes:
+      label: Zenturie and semester
+      description: >-
+        Optional, and only if you are comfortable saying. These plans are published
+        publicly without a login, so naming yours lets the exact file that triggered
+        the bug be fetched and turned into a test fixture.
+      placeholder: "A23a, semester 6"
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >-
+        F12 → Console, on the CIS page. For background-script errors, use
+        `chrome://extensions` → *service worker*, or `about:debugging` → *Inspect*.
+      render: shell

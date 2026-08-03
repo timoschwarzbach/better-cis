@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Install instructions
+    url: https://github.com/StaticFX/better-cis#install
+    about: >-
+      "This add-on could not be installed because it appears to be corrupt" and
+      the signing requirement are both covered here.
+  - name: Latest release
+    url: https://github.com/StaticFX/better-cis/releases/latest
+    about: Prebuilt archives for Chrome and Firefox, before reporting against an old build.

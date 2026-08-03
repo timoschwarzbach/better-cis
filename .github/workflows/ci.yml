@@ -61,7 +61,7 @@ jobs:
   release:
     name: Tag and release
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,7 +130,7 @@ jobs:
           # even without it.
           git commit -m "chore: release $TAG [skip ci]"
           git tag -a "$TAG" -m "$TAG"
-          git push origin HEAD:main --follow-tags
+          git push origin HEAD:master --follow-tags
 
       - name: Create the release
         env:

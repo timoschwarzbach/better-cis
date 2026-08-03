@@ -1,0 +1,58 @@
+name: Feature request
+description: Something the extension should do that it does not.
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is an unofficial project that reads only timetable files the university
+        already publishes without authentication. Anything needing a login, a
+        credential, or data CIS does not already serve publicly is out of scope.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before requesting
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: This does not require a login, credentials, or data CIS does not already publish.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is tedious, confusing or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should happen instead
+      description: Sketches and screenshots of other tools that get it right are welcome.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - The calendar view
+        - Picking courses
+        - Change detection and history
+        - Background sync, badge or notifications
+        - Install, packaging or releases
+        - Documentation
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including whatever you do today to work around it.
