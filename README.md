@@ -299,25 +299,61 @@ Fetches a real published plan, embeds it, and renders the calendar in a page
 you can open from disk. Three buttons cover first run, a selected timetable,
 and a week containing changes. Faster than the unpacked-extension reload cycle.
 
-## Releases
+## Releases and deploys
 
-`.github/workflows/ci.yml` does two things.
+One workflow, `.github/workflows/ci.yml`, with three jobs: **verify**, then
+**release the extension** and **deploy the worker** independently.
 
-**On every push and pull request** it typechecks, runs the tests, builds, and
-runs Mozilla's validator over the Firefox output. Pull requests also get the
-built archives attached as artifacts, so a change can be loaded in a browser
-before it is merged.
+**On every push and pull request** it typechecks both programs, runs the tests,
+builds, packages, and runs Mozilla's validator over the Firefox output. Pull
+requests get the built archives attached as artifacts, so a change can be loaded
+in a browser before it is merged.
 
-**On every push to `master`** it additionally bumps the patch version, commits
-that, tags it, and publishes a GitHub Release with all three archives and a
-`SHA256SUMS.txt`.
+**On a push to `master`**, each artifact ships *only if it actually changed*.
 
-A few things about it that are deliberate:
+### Change detection is on the artifact, not the paths
+
+There are no path filters. They were a poor proxy: `src/lib/` feeds both the
+extension and the worker, and each uses only part of it, so a touched file there
+says nothing about whether either artifact moved.
+
+Instead each job hashes what was built and keeps the hash as a cache key. A hit
+means this exact build already shipped, and the job is skipped. Measured, with
+real one-line code edits:
+
+```
+                            extension          worker
+baseline                    b34df280a81c41fa   c76066c679355625
+npm version patch           b34df280a81c41fa   c76066c679355625   → neither ships
+edit a colour in styles.ts  b73838af0c0456c8   c76066c679355625   → release only
+edit ics-write.ts           b73838af0c0456c8   3c9c068180d7ad8d   → both
+edit storage.ts             b73838af0c0456c8   c76066c679355625   → release only
+```
+
+So a documentation commit produces no release, and a worker-only change produces
+no release either — which is what the `paths-ignore` juggling used to approximate
+and frequently got wrong.
+
+Three details this rests on:
+
+- **The manifest `version` is stripped before hashing** (`scripts/artifact-hash.mjs`).
+  The release job bumps the patch number every time, so leaving it in would make
+  every build differ from the last and nothing would ever be skipped. The table
+  above shows `npm version patch` leaving the fingerprint untouched.
+- **The zips are not hashed**, only the unpacked `dist/chrome` and
+  `dist/firefox` — archives embed timestamps. For the worker only `index.js` is
+  hashed, since its sourcemap and generated README embed the output path.
+- **Eviction fails safe.** A lost cache entry costs one redundant patch release
+  or one redundant deploy of identical code — never a missed change.
+  `workflow_dispatch` takes `force_release` and `force_worker` for when the
+  shipped state has drifted from what the cache believes.
+
+### Other deliberate choices
 
 - **The version is bumped before the build**, because the manifests read their
-  version from `package.json` at build time. A step afterwards asserts that
-  both built manifests actually carry the new version — otherwise a release
-  could ship contents that disagree with its own tag.
+  version from `package.json` at build time. A step afterwards asserts that both
+  built manifests carry the new version — otherwise a release could ship
+  contents that disagree with its own tag.
 - **It cannot loop.** Pushes authenticated with the built-in `GITHUB_TOKEN` do
   not trigger workflows. The commit message also carries `[skip ci]`, which
   would stop it independently.
@@ -326,16 +362,12 @@ A few things about it that are deliberate:
   the version the first pushed instead of colliding on a tag.
 - **Only the release job can write.** The workflow's default permission is
   `contents: read`.
-- **Worker-only changes do not release.** `worker/**` is in `paths-ignore`,
-  because the endpoint versions independently of the extension. Changes under
-  `src/lib/**` are shared and deliberately still trigger both workflows.
+- **A failed release or deploy is not recorded.** The fingerprint is cached only
+  after the step succeeds, so a failure retries on the next run.
 
-`.github/workflows/worker.yml` deploys the endpoint separately — typecheck,
-test, a `--dry-run` bundle to catch a broken cross-package import, then
-`wrangler deploy` on every push to `master` that actually changes it. It is kept
-out of `ci.yml` so a Cloudflare outage can never block an extension release.
+### Deploy credentials
 
-**It needs credentials before it can do anything.** One-time setup:
+The worker job needs these before it can do anything:
 
 ```sh
 # Cloudflare dashboard → My Profile → API Tokens → Create Token
@@ -344,43 +376,11 @@ gh secret set CLOUDFLARE_API_TOKEN
 gh secret set CLOUDFLARE_ACCOUNT_ID   # dashboard → Workers & Pages → Account ID
 ```
 
-Until those exist the workflow verifies and then **fails** at the deploy step,
-with the setup instructions in the run summary. It failing is the point: the
-first version of this skipped quietly with a green tick, which meant a push
-could report success while the worker was never updated. On a fork it still
-skips quietly and stays green — nobody expects someone else's clone to hold
-deploy credentials.
-
-**Change detection is on the artifact, not the paths that produced it.** The
-path filter is only a cheap first gate: it matches all of `src/lib/`, but the
-worker imports about half of that. So the workflow hashes the built bundle and
-keeps the hash as a cache key — a hit means this exact bundle is already live,
-and the deploy is skipped. Editing `storage.ts` or `diff.ts` therefore produces
-no deploy at all, because the bundle comes out byte-identical:
-
-```
-              baseline   c76066c679355625
-  edit storage.ts (unused)   c76066c679355625   → skipped
-  edit ics-write.ts (used)   3c9c068180d7ad8d   → deployed
-```
-
-Two details this rests on. Only `index.js` is hashed — the sourcemap and the
-generated README embed the output path and differ between runs even when
-nothing changed. And if a cache entry is evicted, the result is a redundant
-deploy of identical code, never a skipped real change; that is the direction to
-fail in. `workflow_dispatch` takes a `force` input for the case where the
-deployed state has drifted from what the cache believes.
-
-`package.json` and `package-lock.json` are in the path filter too, since a
-wrangler or esbuild bump changes the emitted bundle. The hash check discards the
-runs where it turns out not to have.
-
-Every push to `master` produces a release, including documentation-only commits.
-To skip those, add to the `push` trigger:
-
-```yaml
-    paths-ignore: ['**.md', 'docs/**']
-```
+Until those exist the job **fails**, with the setup instructions in the run
+summary. That is the point: the first version skipped quietly with a green tick,
+which meant a push could report success while the worker was never updated. On a
+fork it still skips quietly and stays green — nobody expects someone else's
+clone to hold deploy credentials.
 
 ## Layout
 

@@ -24,7 +24,7 @@ import {
   normaliseEndpoint,
   webcalUrl,
 } from '../lib/ical-link.js';
-import { defaultIcalEndpoint } from '../lib/site.js';
+import { defaultIcalEndpoint, selfHostGuide } from '../lib/site.js';
 import { shouldOfferUpdate } from '../lib/version.js';
 import {
   applyAnnotations,
@@ -933,7 +933,7 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     }
 
     const host = hostOf(endpoint()) ?? 'unseren Dienst';
-    return el(
+    const box = el(
       'div',
       'subscribe-notice warn',
       `Achtung: Dieser Link läuft nicht direkt über CIS, sondern über ${host}. ` +
@@ -941,22 +941,51 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
         'schreibt die Termine lesbar um. Deine Kursauswahl steht im Link — der Dienst ' +
         'sieht also bei jedem Abruf deines Kalenders, welche Kurse du belegst, und wer ' +
         'den Link hat, sieht deinen Stundenplan. Wenn du das nicht möchtest, nimm das ' +
-        'Original von CIS.',
+        'Original von CIS',
     );
+
+    // Self-hosting is the third answer to the trade-off this notice describes,
+    // so it belongs in the notice rather than only in the advanced row.
+    const link = guideLink('betreibe den Dienst selbst');
+    if (link) box.append(document.createTextNode(' oder '), link);
+    box.append(document.createTextNode('.'));
+
+    return box;
+  }
+
+  /**
+   * Link to the self-hosting guide, or nothing when none is configured.
+   *
+   * Opened by the student rather than fetched by the extension, so it needs no
+   * host permission — see `selfHostGuide`.
+   */
+  function guideLink(text: string): HTMLAnchorElement | null {
+    const guide = selfHostGuide();
+    if (!guide) return null;
+
+    const link = el('a', 'guide-link', text);
+    link.href = guide;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    return link;
   }
 
   /** Shown when nobody has deployed a worker and none is configured yet. */
   function renderEndpointPrompt(): HTMLElement {
     const box = el('div', 'subscribe-empty');
-    box.append(
-      el(
-        'p',
-        undefined,
-        'Dafür wird ein Endpunkt gebraucht, der den Plan gefiltert ausliefert. ' +
-          'Trage unten die Adresse einer Instanz ein — der Code dafür liegt im ' +
-          'Ordner worker/ des Projekts.',
-      ),
+    const text = el(
+      'p',
+      undefined,
+      'Dafür wird ein Endpunkt gebraucht, der den Plan gefiltert ausliefert. ' +
+        'Du kannst in ein paar Minuten einen eigenen als Cloudflare Worker ' +
+        'betreiben — kostenlos, ohne Datenbank, ohne Konfiguration — und die ' +
+        'Adresse unten eintragen.',
     );
+
+    const link = guideLink('Anleitung auf GitHub');
+    if (link) text.append(document.createTextNode(' '), link);
+
+    box.append(text);
     return box;
   }
 
@@ -1095,8 +1124,21 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
       apply();
     });
     row.append(save);
-
     details.append(row, status);
+
+    const guide = guideLink('Eigene Instanz auf Cloudflare betreiben');
+    if (guide) {
+      const hint = el('p', 'advanced-hint');
+      hint.append(
+        document.createTextNode(
+          'Der Code liegt im Ordner worker/ und läuft als Cloudflare Worker — ' +
+            'kostenlos, ohne Datenbank, ohne Bindings. ',
+        ),
+        guide,
+      );
+      details.append(hint);
+    }
+
     return details;
   }
 

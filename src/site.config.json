@@ -8,5 +8,7 @@
   "_icalEndpoint": "Base URL of a deployed worker/ instance, e.g. https://better-cis-ical.<subdomain>.workers.dev. Prefills the subscription dialog; students can point at their own. Empty means the dialog asks for one.",
   "icalEndpoint": "",
   "_releaseFeed": "Release API this build checks for updates, at most once a day. Its origin becomes a host permission. Empty disables update checking entirely — no request, no permission, no banner.",
-  "releaseFeed": "https://api.github.com/repos/StaticFX/better-cis/releases/latest"
+  "releaseFeed": "https://api.github.com/repos/StaticFX/better-cis/releases/latest",
+  "_selfHostGuide": "Where the subscription dialog sends someone who would rather run the endpoint themselves. Opened by the user, never fetched, so it needs no host permission. Empty hides the link.",
+  "selfHostGuide": "https://github.com/StaticFX/better-cis#running-your-own-endpoint"
 }

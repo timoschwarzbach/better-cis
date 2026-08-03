@@ -27,6 +27,11 @@ export interface SiteConfig {
    * request, no host permission, no banner.
    */
   releaseFeed?: string;
+  /**
+   * Guide for running your own endpoint. Only ever opened by the student, so
+   * unlike `releaseFeed` it costs no host permission.
+   */
+  selfHostGuide?: string;
 }
 
 declare const __SITE_CONFIG__: SiteConfig;
@@ -52,4 +57,15 @@ export function defaultIcalEndpoint(): string | null {
 export function releaseFeed(): string | null {
   const feed = siteConfig.releaseFeed?.trim();
   return feed ? feed : null;
+}
+
+/**
+ * Where to send someone who would rather host the endpoint themselves.
+ *
+ * Checked for https even though it comes from build-time config: it ends up as
+ * an href, and a link in a privacy notice is a poor place to make exceptions.
+ */
+export function selfHostGuide(): string | null {
+  const guide = siteConfig.selfHostGuide?.trim();
+  return guide && /^https:\/\//i.test(guide) ? guide : null;
 }

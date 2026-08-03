@@ -635,6 +635,16 @@ input.url:focus { outline: 2px solid var(--navy); outline-offset: -1px; }
   color: var(--navy);
 }
 .advanced .hint { font-size: 12px; color: var(--ink-soft); }
+.advanced-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+/* Inline link inside running prose, in both the notice and the advanced row. */
+.guide-link { color: var(--navy); font-weight: 600; text-decoration: underline; }
 .advanced-row { display: flex; align-items: center; gap: 8px; margin: 9px 0 4px; }
 .advanced-row input.url { font-size: 12px; }
 

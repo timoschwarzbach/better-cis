@@ -1,27 +1,42 @@
 name: CI
 
+# One workflow for both artifacts. They ship independently — the extension as a
+# GitHub release, the worker to Cloudflare — but they share a source tree, a
+# test suite and a typecheck, so splitting them meant running all of that twice
+# and reasoning about two sets of path filters that overlapped on src/lib/.
+#
+# Nothing is filtered by path any more. Verification runs on every push, and
+# each artifact ships only when *it* changed, decided by hashing what was built
+# rather than guessing from which files were touched.
+
 on:
   push:
     branches: [master]
-    # A push to master releases, so a change that cannot affect the extension
-    # must not trigger one. worker/ ships separately via worker.yml; changes
-    # under src/lib/ are shared and deliberately still land here.
-    paths-ignore:
-      - "worker/**"
   pull_request:
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: "Release even if the extension is unchanged"
+        type: boolean
+        default: false
+      force_worker:
+        description: "Deploy the worker even if it is unchanged"
+        type: boolean
+        default: false
 
-# Only the release job writes; verification never needs more than read.
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Typecheck, test, lint
+    name: Typecheck, test, build
     runs-on: ubuntu-latest
     concurrency:
       group: verify-${{ github.ref }}
       cancel-in-progress: true
+    outputs:
+      extension: ${{ steps.hash.outputs.extension }}
+      worker: ${{ steps.hash.outputs.worker }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,25 +50,53 @@ jobs:
       - run: npm ci
 
       - name: Typecheck
+        # Both programs: the extension's, and the worker's. handler.ts is shared
+        # source and has to satisfy each.
         run: npm run typecheck
 
       - name: Test
         run: npm test
 
-      - name: Build
-        run: npm run build
+      - name: Build and package
+        run: npm run package
 
       - name: Validate the Firefox build
         # Mozilla's own validator. Catches manifest problems that only surface
         # at install time, which is far too late to find out.
         run: npm run lint:firefox
 
-      - name: Package
-        run: npm run package
+      - name: Fingerprint both artifacts
+        id: hash
+        env:
+          WORKER_BUILD: ${{ runner.temp }}/worker-build
+        run: |
+          # A dry run bundles exactly as a deploy would, so a broken
+          # cross-package import fails here rather than in production.
+          npx wrangler deploy --config worker/wrangler.toml --env="" \
+            --dry-run --outdir "$WORKER_BUILD"
+
+          if [ ! -f "$WORKER_BUILD/index.js" ]; then
+            echo "::error::No bundle at $WORKER_BUILD/index.js — has wrangler changed its output layout?"
+            exit 1
+          fi
+
+          # Only index.js: the sourcemap and generated README embed the output
+          # path, so they differ between runs even when nothing has changed.
+          WORKER="$(sha256sum "$WORKER_BUILD/index.js" | cut -d' ' -f1)"
+
+          # The unpacked builds, with the manifest version stripped — see
+          # scripts/artifact-hash.mjs. Not the zips: those embed timestamps.
+          EXTENSION="$(node scripts/artifact-hash.mjs dist/chrome dist/firefox)"
+
+          echo "extension=$EXTENSION" >> "$GITHUB_OUTPUT"
+          echo "worker=$WORKER" >> "$GITHUB_OUTPUT"
+          echo "extension $EXTENSION"
+          echo "worker    $WORKER"
 
       # So a pull request can be downloaded and actually loaded in a browser
       # before it is merged.
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
         with:
           name: better-cis-${{ github.sha }}
           path: |
@@ -64,9 +107,9 @@ jobs:
           retention-days: 14
 
   release:
-    name: Tag and release
+    name: Release the extension
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -90,7 +133,36 @@ jobs:
 
       - run: npm ci
 
+      # Change detection, against the built extension rather than the paths
+      # that produced it. A cache entry under this key means this exact build
+      # has already been released, so a docs-only commit — or one that only
+      # touches worker/ — produces no release at all.
+      #
+      # If the entry is evicted the result is one redundant patch release, never
+      # a missed one. That is the direction to fail in.
+      - name: Has this build been released?
+        id: cached
+        uses: actions/cache/restore@v4
+        with:
+          path: .released
+          key: extension-${{ needs.verify.outputs.extension }}
+
+      - name: Decide whether to release
+        id: gate
+        env:
+          CACHED: ${{ steps.cached.outputs.cache-hit }}
+          FORCED: ${{ inputs.force_release }}
+          FINGERPRINT: ${{ needs.verify.outputs.extension }}
+        run: |
+          if [ "$CACHED" = "true" ] && [ "$FORCED" != "true" ]; then
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Extension unchanged since the last release (${FINGERPRINT:0:12}) — skipping."
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Bump the patch version
+        if: steps.gate.outputs.go == 'true'
         id: version
         run: |
           # The manifests take their version from package.json at build time,
@@ -102,9 +174,11 @@ jobs:
           echo "Releasing v$VERSION"
 
       - name: Build and package
+        if: steps.gate.outputs.go == 'true'
         run: npm run package
 
       - name: Check the built manifests carry the new version
+        if: steps.gate.outputs.go == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -120,10 +194,12 @@ jobs:
           done
 
       - name: Checksums
+        if: steps.gate.outputs.go == 'true'
         working-directory: dist
         run: sha256sum better-cis-chrome.zip better-cis-firefox.xpi better-cis-firefox.zip > SHA256SUMS.txt
 
       - name: Commit and tag
+        if: steps.gate.outputs.go == 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
@@ -138,6 +214,7 @@ jobs:
           git push origin HEAD:master --follow-tags
 
       - name: Create the release
+        if: steps.gate.outputs.go == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -166,3 +243,107 @@ jobs:
             dist/SHA256SUMS.txt \
             --title "$TAG" \
             --notes-file release-notes.md
+
+      - name: Remember what was released
+        # Only after the release actually succeeded, so a failure retries next
+        # run instead of being recorded as done.
+        if: steps.gate.outputs.go == 'true'
+        run: echo "${{ needs.verify.outputs.extension }} ${{ github.sha }}" > .released
+
+      - name: Save the fingerprint
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .released
+          key: extension-${{ needs.verify.outputs.extension }}
+
+  worker:
+    name: Deploy the worker
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: worker-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      # Same idea as the release gate, against the worker bundle. The bundle
+      # only contains what the worker imports, so editing storage.ts or
+      # calendar.ts produces an identical one and no deploy.
+      - name: Has this bundle been deployed?
+        id: cached
+        uses: actions/cache/restore@v4
+        with:
+          path: .deployed
+          key: worker-${{ needs.verify.outputs.worker }}
+
+      - name: Deploy to Cloudflare
+        id: run
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CACHED: ${{ steps.cached.outputs.cache-hit }}
+          FORCED: ${{ inputs.force_worker }}
+          BUNDLE: ${{ needs.verify.outputs.worker }}
+          IS_FORK: ${{ github.event.repository.fork }}
+        run: |
+          if [ "$CACHED" = "true" ] && [ "$FORCED" != "true" ]; then
+            echo "::notice::Worker bundle ${BUNDLE:0:12} is already live — skipping."
+            exit 0
+          fi
+
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            # On a fork this is expected: nobody expects someone else's clone to
+            # hold deploy credentials, and a red build there is just noise.
+            #
+            # On the repository that owns the endpoint it is a failure, and a
+            # quiet one is the worst kind — the workflow goes green, the run says
+            # "success", and the worker is simply never updated.
+            if [ "$IS_FORK" != "true" ]; then
+              {
+                echo "### Worker not deployed"
+                echo
+                echo 'No `CLOUDFLARE_API_TOKEN` secret is configured, so there is nothing to authenticate with.'
+                echo
+                echo '```sh'
+                echo '# Cloudflare dashboard → My Profile → API Tokens → Create Token'
+                echo '#   → template "Edit Cloudflare Workers"'
+                echo 'gh secret set CLOUDFLARE_API_TOKEN'
+                echo 'gh secret set CLOUDFLARE_ACCOUNT_ID   # dashboard → Workers & Pages → Account ID'
+                echo '```'
+                echo
+                echo 'Then re-run this workflow, or push again.'
+              } >> "$GITHUB_STEP_SUMMARY"
+
+              echo "::error::CLOUDFLARE_API_TOKEN is not set — the worker was NOT deployed. See the run summary for how to configure it."
+              exit 1
+            fi
+
+            echo "::notice::CLOUDFLARE_API_TOKEN is not set — skipping deploy on a fork."
+            exit 0
+          fi
+
+          # --env="" targets the top-level environment. Once any [env.*] block
+          # exists, a bare deploy is ambiguous, and the ambiguous case is the
+          # one that overwrites production.
+          npx wrangler deploy --config worker/wrangler.toml --env="" \
+            --message "${GITHUB_SHA:0:7} — bundle ${BUNDLE:0:12}"
+
+          echo "$BUNDLE $GITHUB_SHA" > .deployed
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::Deployed bundle ${BUNDLE:0:12} from ${GITHUB_SHA:0:7}."
+
+      - name: Remember what was deployed
+        if: steps.run.outputs.deployed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .deployed
+          key: worker-${{ needs.verify.outputs.worker }}
