@@ -4,5 +4,7 @@
   "firefoxAddonId": "better-cis@localhost",
   "origins": ["https://cis.nordakademie.de/*"],
   "contentScriptMatches": ["https://cis.nordakademie.de/*"],
-  "defaultTimeZone": "Europe/Berlin"
+  "defaultTimeZone": "Europe/Berlin",
+  "_icalEndpoint": "Base URL of a deployed worker/ instance, e.g. https://better-cis-ical.<subdomain>.workers.dev. Prefills the subscription dialog; students can point at their own. Empty means the dialog asks for one.",
+  "icalEndpoint": ""
 }

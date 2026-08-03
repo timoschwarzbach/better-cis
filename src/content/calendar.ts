@@ -11,8 +11,27 @@
  * `innerHTML` would turn a timetable entry into script injection.
  */
 
-import { buildCourseList, filterSelected, groupCourses, type CourseGroup } from '../lib/courses.js';
-import { applyAnnotations, parseRoomSwap, type SkedEvent } from '../lib/sked.js';
+import {
+  buildCourseList,
+  filterSelected,
+  groupCourses,
+  KIND_LABELS,
+  type CourseGroup,
+} from '../lib/courses.js';
+import {
+  buildSubscribeUrl,
+  googleCalendarUrl,
+  normaliseEndpoint,
+  webcalUrl,
+} from '../lib/ical-link.js';
+import { defaultIcalEndpoint } from '../lib/site.js';
+import {
+  applyAnnotations,
+  parseRoomSwap,
+  planUrls,
+  type PlanRef,
+  type SkedEvent,
+} from '../lib/sked.js';
 import { CALENDAR_CSS } from './styles.js';
 import type { Settings, StoredAnnotations, SyncStatus } from '../lib/storage.js';
 import type { Change, Course, Snapshot } from '../lib/types.js';
@@ -39,23 +58,16 @@ export interface CalendarActions {
   acknowledgeAll(): unknown;
   /** Show or hide the original CIS table. */
   setOriginalVisible(visible: boolean): void;
+  /** Point the subscription link at a different worker; null restores the default. */
+  setEndpoint(endpoint: string | null): unknown;
+  /** Remember which link was copied, so a later selection change can be flagged. */
+  setLastCopied(url: string): unknown;
 }
 
 const WEEKDAYS_DE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-/**
- * sked's single-letter type codes, spelled out. "V" and "WP" are the
- * timetable system's vocabulary, not a student's.
- */
-const KIND_LABELS: Record<string, string> = {
-  V: 'Vorlesung',
-  WP: 'Wahlpflicht',
-  Z: 'Betreuung',
-  Vg: 'Vortrag',
-  P: 'Praktikum',
-  Ü: 'Übung',
-  S: 'Seminar',
-};
+/** How long the copy button confirms for. */
+const COPY_FEEDBACK_MS = 2000;
 
 export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
   let state: CalendarState | null = null;
@@ -64,6 +76,71 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
   let pickerOpen = false;
   let draftSelection: Set<string> | null = null;
   let showOriginal = false;
+  let subscribeOpen = false;
+  /**
+   * Which feed the dialog is offering.
+   *
+   * `original` is the plan file straight from CIS. It is worse in every way
+   * except one that matters: nothing sits between the student and the
+   * university. That trade is theirs to make, so both are on offer.
+   *
+   * Starts as null — deliberately nothing preselected. Choosing the routed
+   * feed is the point at which someone agrees to a third party seeing which
+   * courses they take, and an agreement that was already ticked when the box
+   * appeared is not one they gave.
+   */
+  let subscribeSource: 'service' | 'original' | null = null;
+  /** Built asynchronously, because encoding the selection compresses it. */
+  let subscribeUrl: string | null = null;
+  /** What `subscribeUrl` was built from, so a rebuild only happens on a change. */
+  let subscribeUrlKey = '';
+  /** Why there is no link, when that is not simply "not built yet". */
+  let subscribeProblem: string | null = null;
+  /**
+   * When the link was last copied, for the button's confirmation.
+   *
+   * Held here rather than on the button because persisting the copy re-renders
+   * the whole panel, which would rebuild the button and discard the feedback
+   * before anyone saw it.
+   */
+  let copiedAt: number | null = null;
+
+  /* ---------------------------------------------------------------- *
+   * Stable DOM
+   *
+   * Built once rather than per render. A <dialog> that is removed and
+   * recreated loses its place in the top layer, and with it the focus and
+   * scroll position of whoever is halfway through the course list — and a
+   * background sync re-renders while that list is open. Only the *contents*
+   * of these three nodes are rebuilt.
+   *
+   * <dialog> rather than a positioned overlay because this panel lives on
+   * someone else's page: the top layer escapes the host's stacking contexts,
+   * transforms and overflow entirely, and brings focus trapping, background
+   * inertness and Esc-to-close with it.
+   * ---------------------------------------------------------------- */
+
+  const style = document.createElement('style');
+  style.textContent = CALENDAR_CSS;
+  const panel = el('div', 'panel');
+  const modal = document.createElement('dialog');
+  modal.className = 'modal';
+  shadow.append(style, panel, modal);
+
+  // Esc and the close button both arrive here, so one place resets the flags.
+  modal.addEventListener('close', () => {
+    if (!pickerOpen && !subscribeOpen) return;
+    pickerOpen = false;
+    subscribeOpen = false;
+    draftSelection = null;
+    render();
+  });
+
+  // A click whose target is the dialog itself landed on the backdrop: the
+  // content fills the box, so anything inside it hits a descendant instead.
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) modal.close();
+  });
 
   /* ---------------------------------------------------------------- *
    * Dates, computed in the plan's time zone rather than the browser's
@@ -148,20 +225,12 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
   function render(): void {
     if (!state) return;
 
-    // A re-render rebuilds the whole tree, which would otherwise throw the
-    // course list back to the top mid-selection. Toggling a checkbox no longer
-    // re-renders at all, but a background sync landing while the picker is
-    // open still can.
+    // Rebuilding the list would otherwise throw it back to the top
+    // mid-selection. Toggling a checkbox no longer re-renders at all, but a
+    // background sync landing while the picker is open still can.
     const scrollTop = shadow.querySelector('.picker-list')?.scrollTop ?? 0;
 
-    clear(shadow);
-
-    const style = document.createElement('style');
-    style.textContent = CALENDAR_CSS;
-    shadow.append(style);
-
-    const panel = el('div', 'panel');
-    shadow.append(panel);
+    clear(panel);
 
     const events = visibleEvents();
     const weeks = availableWeeks(events);
@@ -178,8 +247,10 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
 
     if (state.status.lastError) panel.append(el('div', 'error', state.status.lastError));
 
-    const notChosenYet = state.settings.selectedCourses === null;
-    if (notChosenYet && !pickerOpen) {
+    // The prompt stays put while the picker is open over it: swapping in the
+    // unfiltered grid behind the modal would show all 233 events for a moment
+    // and then hide most of them again.
+    if (state.settings.selectedCourses === null) {
       panel.append(renderPrompt());
     } else {
       const weekEvents = events.filter((e) => weekStartOf(dayKey(e.start)) === weekCursor);
@@ -188,11 +259,26 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
       panel.append(renderGrid(weekEvents));
     }
 
-    if (pickerOpen) {
-      panel.append(renderPicker());
-      const list = shadow.querySelector('.picker-list');
-      if (list && scrollTop > 0) list.scrollTop = scrollTop;
+    renderModal(scrollTop);
+  }
+
+  /** Bring the dialog in line with the open flags. */
+  function renderModal(scrollTop: number): void {
+    if (!pickerOpen && !subscribeOpen) {
+      if (modal.open) modal.close();
+      clear(modal);
+      return;
     }
+
+    clear(modal);
+    modal.append(pickerOpen ? renderPicker() : renderSubscribe());
+
+    // Only on the transition into open: showModal() on an already-open dialog
+    // throws, and re-showing would drop focus back to the top.
+    if (!modal.open) modal.showModal();
+
+    const list = modal.querySelector('.picker-list');
+    if (list && scrollTop > 0) list.scrollTop = scrollTop;
   }
 
   function renderBar(weeks: string[]): HTMLElement {
@@ -240,9 +326,22 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     pick.addEventListener('click', () => {
       pickerOpen = !pickerOpen;
       draftSelection = pickerOpen ? new Set(selected ?? []) : null;
+      if (pickerOpen) subscribeOpen = false;
       render();
     });
     actionsBar.append(pick);
+
+    const subscribe = el('button', 'ghost', 'Abonnieren');
+    subscribe.title = 'Diese Kurse als Kalender abonnieren';
+    subscribe.addEventListener('click', () => {
+      subscribeOpen = !subscribeOpen;
+      if (subscribeOpen) {
+        pickerOpen = false;
+        draftSelection = null;
+      }
+      render();
+    });
+    actionsBar.append(subscribe);
 
     const toggle = el('button', 'ghost', showOriginal ? 'Original ausblenden' : 'Original');
     toggle.title = 'Die ursprüngliche CIS-Tabelle ein- oder ausblenden';
@@ -455,15 +554,25 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
    * Course picker
    * ---------------------------------------------------------------- */
 
+  /** Title bar shared by both modals, including the close affordance. */
+  function modalHead(title: string, hint: string): HTMLElement {
+    const head = el('div', 'modal-head');
+    head.append(el('h3', undefined, title), el('span', 'hint', hint), el('div', 'spacer'));
+
+    const close = el('button', 'icon', '×');
+    close.title = 'Schließen';
+    close.setAttribute('aria-label', 'Schließen');
+    close.addEventListener('click', () => modal.close());
+
+    head.append(close);
+    return head;
+  }
+
   function renderPicker(): HTMLElement {
     const wrap = el('div', 'picker');
-
-    const head = el('div', 'picker-head');
-    head.append(
-      el('h3', undefined, 'Deine Kurse'),
-      el('span', 'hint', 'Wo mehrere Gruppen parallel laufen, wähle die, in der du bist.'),
+    wrap.append(
+      modalHead('Deine Kurse', 'Wo mehrere Gruppen parallel laufen, wähle die, in der du bist.'),
     );
-    wrap.append(head);
 
     const all = state!.snapshot ? buildCourseList(state!.snapshot.events) : [];
     const draft = draftSelection ?? new Set<string>();
@@ -503,6 +612,9 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
       void actions.setSelection([...draft]);
       pickerOpen = false;
       draftSelection = null;
+      // Close now rather than waiting for the write to come back around
+      // through storage: the selection is already committed to the draft.
+      render();
     });
     foot.append(save);
     wrap.append(foot);
@@ -579,6 +691,313 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     return row;
   }
 
+  /* ---------------------------------------------------------------- *
+   * Calendar subscription
+   * ---------------------------------------------------------------- */
+
+  /** The configured worker, falling back to whatever the build shipped with. */
+  function endpoint(): string | null {
+    return state?.settings.icalEndpoint ?? defaultIcalEndpoint();
+  }
+
+  function planRef(): PlanRef | null {
+    const { zenturie, semester } = state!.settings;
+    return zenturie && semester ? { zenturie, semester } : null;
+  }
+
+  /**
+   * Rebuild the subscription link when what it encodes has changed.
+   *
+   * Asynchronous because the selection is compressed into the URL, so the
+   * dialog renders first and fills the field when this settles. The key guard
+   * is what stops the re-render it triggers from looping.
+   */
+  function refreshSubscribeUrl(): void {
+    const base = endpoint();
+    const ref = planRef();
+    const selection = state!.settings.selectedCourses;
+    const key = JSON.stringify([base, ref, selection]);
+    if (key === subscribeUrlKey) return;
+
+    subscribeUrlKey = key;
+    subscribeUrl = null;
+    subscribeProblem = null;
+
+    if (!ref) {
+      subscribeProblem = 'Der Plan ist noch nicht geladen.';
+      return;
+    }
+    if (!base) return;
+
+    void buildSubscribeUrl({ endpoint: base, ref, selection }).then((url) => {
+      // A newer request has superseded this one; its result is stale.
+      if (subscribeUrlKey !== key) return;
+      subscribeUrl = url;
+      // A stored endpoint can be unusable — an older build's default, or a
+      // value that was valid when it was typed and is not a URL any more.
+      subscribeProblem = url ? null : 'Der Endpunkt ist keine gültige Adresse.';
+      if (subscribeOpen) render();
+    });
+  }
+
+  function renderSubscribe(): HTMLElement {
+    refreshSubscribeUrl();
+
+    const wrap = el('div', 'subscribe');
+    wrap.append(
+      modalHead('Kalender abonnieren', 'Zwei Wege — such dir einen aus.'),
+    );
+
+    const body = el('div', 'subscribe-body');
+    body.append(renderSourceChoice());
+
+    if (subscribeSource === null) {
+      body.append(
+        el('div', 'subscribe-note', 'Wähle oben, worauf der Link zeigen soll.'),
+      );
+    } else {
+      // The original needs no endpoint, so it stays available even where
+      // nobody has deployed a worker.
+      const needsEndpoint = subscribeSource === 'service' && !endpoint();
+      body.append(needsEndpoint ? renderEndpointPrompt() : renderSubscribeLink());
+      body.append(renderSourceNotice());
+    }
+
+    wrap.append(body);
+    wrap.append(renderEndpointRow());
+    return wrap;
+  }
+
+  /** The two feeds, with the trade-off stated on each. */
+  function renderSourceChoice(): HTMLElement {
+    const box = el('div', 'sources');
+
+    const total = state!.snapshot?.events.length ?? 0;
+    const mine = state!.snapshot
+      ? filterSelected(state!.snapshot.events, state!.settings.selectedCourses).length
+      : 0;
+
+    const options: { value: 'service' | 'original'; title: string; sub: string }[] = [
+      {
+        value: 'service',
+        title: 'Nur meine Kurse',
+        sub:
+          `${mine} von ${total} Terminen, mit lesbaren Titeln, Raum und Dozent. ` +
+          'Läuft über unseren Dienst.',
+      },
+      {
+        value: 'original',
+        title: 'Original von CIS',
+        sub: `Alle ${total} Termine deiner Zenturie, unverändert. Direkt von cis.nordakademie.de.`,
+      },
+    ];
+
+    for (const option of options) {
+      const row = el('label', 'source-row');
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'better-cis-source';
+      radio.checked = subscribeSource === option.value;
+      radio.addEventListener('change', () => {
+        if (!radio.checked) return;
+        subscribeSource = option.value;
+        render();
+      });
+
+      const main = el('div', 'row-main');
+      main.append(el('div', 'row-title', option.title), el('div', 'row-sub', option.sub));
+      row.append(radio, main);
+      box.append(row);
+    }
+
+    return box;
+  }
+
+  /**
+   * What each choice actually means for the student's data.
+   *
+   * Stated rather than buried: one of these links hands a third party a record
+   * of which courses someone takes, every time their phone polls it.
+   */
+  function renderSourceNotice(): HTMLElement {
+    if (subscribeSource === 'original') {
+      return el(
+        'div',
+        'subscribe-notice',
+        'Dieser Link geht direkt an cis.nordakademie.de — niemand sitzt dazwischen. ' +
+          'Dafür bekommst du den Plan der ganzen Zenturie, und die Titel sind die des ' +
+          'Originalfeeds: „WP WP Strat. Marketing-Projekt,Prof. Dr. …,H008".',
+      );
+    }
+
+    const host = hostOf(endpoint()) ?? 'unseren Dienst';
+    return el(
+      'div',
+      'subscribe-notice warn',
+      `Achtung: Dieser Link läuft nicht direkt über CIS, sondern über ${host}. ` +
+        'Dieser Dienst holt den öffentlichen Plan, filtert ihn auf deine Kurse und ' +
+        'schreibt die Termine lesbar um. Deine Kursauswahl steht im Link — der Dienst ' +
+        'sieht also bei jedem Abruf deines Kalenders, welche Kurse du belegst, und wer ' +
+        'den Link hat, sieht deinen Stundenplan. Wenn du das nicht möchtest, nimm das ' +
+        'Original von CIS.',
+    );
+  }
+
+  /** Shown when nobody has deployed a worker and none is configured yet. */
+  function renderEndpointPrompt(): HTMLElement {
+    const box = el('div', 'subscribe-empty');
+    box.append(
+      el(
+        'p',
+        undefined,
+        'Dafür wird ein Endpunkt gebraucht, der den Plan gefiltert ausliefert. ' +
+          'Trage unten die Adresse einer Instanz ein — der Code dafür liegt im ' +
+          'Ordner worker/ des Projekts.',
+      ),
+    );
+    return box;
+  }
+
+  /** The link currently on offer, which is only async for the service one. */
+  function activeSubscribeUrl(): string | null {
+    if (subscribeSource === 'original') {
+      const ref = planRef();
+      return ref ? planUrls(ref).ics : null;
+    }
+    return subscribeUrl;
+  }
+
+  function renderSubscribeLink(): HTMLElement {
+    const box = el('div', 'subscribe-link');
+    const url = activeSubscribeUrl();
+
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.readOnly = true;
+    field.className = 'url';
+    field.value = url ?? subscribeProblem ?? 'wird erzeugt …';
+    field.addEventListener('focus', () => field.select());
+    box.append(field);
+
+    const row = el('div', 'subscribe-actions');
+
+    const confirming = copiedAt !== null && Date.now() - copiedAt < COPY_FEEDBACK_MS;
+    const copy = el('button', 'primary', confirming ? 'Kopiert' : 'Kopieren');
+    copy.disabled = url === null;
+    copy.addEventListener('click', () => {
+      if (!url) return;
+      void copyToClipboard(url, field).then(() => {
+        copiedAt = Date.now();
+        // Re-renders the panel, which is why the confirmation lives in state.
+        void actions.setLastCopied(url);
+        render();
+        setTimeout(() => {
+          copiedAt = null;
+          if (subscribeOpen) render();
+        }, COPY_FEEDBACK_MS);
+      });
+    });
+    row.append(copy);
+
+    if (url) {
+      const google = el('a', 'button-link', 'Google Kalender');
+      google.href = googleCalendarUrl(url);
+      google.target = '_blank';
+      google.rel = 'noopener noreferrer';
+      row.append(google);
+
+      // webcal: is what makes Apple Calendar and Outlook offer to *subscribe*
+      // rather than import a one-off copy that never updates.
+      const webcal = el('a', 'button-link', 'Apple / Outlook');
+      webcal.href = webcalUrl(url);
+      row.append(webcal);
+    }
+
+    box.append(row);
+
+    // Only meaningful for the service link, and only against one from the same
+    // endpoint: the original never changes, and a link copied from a different
+    // endpoint differs for a reason that has nothing to do with the selection.
+    const copied = state!.settings.icalLastCopied;
+    const base = normaliseEndpoint(endpoint() ?? '');
+    if (
+      subscribeSource === 'service' &&
+      url &&
+      copied &&
+      copied !== url &&
+      base &&
+      copied.startsWith(base)
+    ) {
+      box.append(
+        el(
+          'div',
+          'subscribe-warning',
+          'Deine Kursauswahl hat sich geändert. Der alte Link liefert weiter die alten ' +
+            'Kurse — kopiere den neuen und ersetze das Abo in deiner Kalender-App.',
+        ),
+      );
+    }
+
+    // The privacy half of this used to live here; it is in the notice below
+    // now, where it belongs to whichever source is actually selected.
+    box.append(
+      el('div', 'subscribe-note', 'Kalender-Apps fragen den Link etwa stündlich ab.'),
+    );
+    return box;
+  }
+
+  function renderEndpointRow(): HTMLElement {
+    const details = el('details', 'advanced');
+    // Open by default while there is nothing to show, since entering an
+    // endpoint is then the only thing left to do here.
+    details.open = !endpoint();
+    details.append(el('summary', undefined, 'Erweitert: eigener Endpunkt'));
+
+    const row = el('div', 'advanced-row');
+    const field = document.createElement('input');
+    field.type = 'url';
+    field.className = 'url';
+    field.placeholder = defaultIcalEndpoint() ?? 'https://…workers.dev';
+    field.value = state!.settings.icalEndpoint ?? '';
+    row.append(field);
+
+    // Not .ghost: that is the toolbar's white-on-navy button, which would be
+    // invisible against this panel.
+    const save = el('button', 'secondary', 'Übernehmen');
+    const status = el('span', 'hint');
+
+    const apply = () => {
+      const raw = field.value.trim();
+      if (raw === '') {
+        // An empty field means "go back to the endpoint this build ships with",
+        // which is the only way to undo a custom one.
+        void actions.setEndpoint(null);
+        render();
+        return;
+      }
+      const normalised = normaliseEndpoint(raw);
+      if (!normalised) {
+        status.textContent = 'Das sieht nicht nach einer Adresse aus.';
+        return;
+      }
+      void actions.setEndpoint(normalised);
+      render();
+    };
+
+    save.addEventListener('click', apply);
+    // Enter is what anyone typing into a single field will reach for, and
+    // there is no form here to do it for us.
+    field.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      apply();
+    });
+    row.append(save);
+
+    details.append(row, status);
+    return details;
+  }
+
   return {
     update(next: CalendarState): void {
       state = next;
@@ -608,6 +1027,38 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 function clear(node: Node): void {
   while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+/**
+ * Copy text, with the old selection-based route as a fallback.
+ *
+ * `navigator.clipboard` is the right API but it rejects when the document is
+ * not focused, which happens often enough in a content script on someone
+ * else's page. The fallback is deprecated and works everywhere.
+ */
+async function copyToClipboard(value: string, field: HTMLInputElement): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    field.focus();
+    field.select();
+    document.execCommand('copy');
+  }
+}
+
+/**
+ * Hostname of an endpoint, for naming the third party in the warning. Saying
+ * "läuft über cis-ical.example.workers.dev" is a statement someone can act on;
+ * "läuft über unseren Dienst" is not.
+ */
+function hostOf(endpoint: string | null): string | null {
+  if (!endpoint) return null;
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return null;
+  }
 }
 
 /** Monday of the week containing `key`, as `YYYY-MM-DD`. */

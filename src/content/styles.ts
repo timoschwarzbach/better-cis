@@ -104,7 +104,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 }
 .nav button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.24); }
 
-.bar .spacer { flex: 1 1 auto; }
+.spacer { flex: 1 1 auto; }
 
 .bar-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -314,28 +314,80 @@ button:disabled { opacity: 0.35; cursor: default; }
 }
 .primary:hover:not(:disabled) { background: var(--navy-deep); }
 
-.picker { border-top: 1px solid var(--rail); background: var(--paper-sunk); }
+/* ---------------------------------------------------------------- *
+ * Modal shell
+ *
+ * The dialog is in the top layer, so nothing on the host page can stack
+ * above it or clip it — which is the whole reason for using <dialog>
+ * rather than a positioned overlay on a page we do not control.
+ * ---------------------------------------------------------------- */
 
-.picker-head {
+.modal {
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--paper-sunk);
+  color: var(--ink);
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(84vh, 780px);
+  /* The header and footer stay put; the list inside does the scrolling. */
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 24, 56, 0.32);
+}
+/* Scoped to [open]: an unscoped display would defeat the user agent's own
+   "dialog:not([open]) { display: none }" and leave the modal on screen. */
+.modal[open] { display: flex; flex-direction: column; }
+.modal::backdrop { background: rgba(0, 24, 56, 0.42); }
+
+.modal > * {
+  display: flex;
+  flex-direction: column;
+  /* Without min-height:0 a flex child refuses to shrink below its content,
+     and the inner list scrolls the whole dialog instead of itself. */
+  min-height: 0;
+}
+
+.modal-head {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 14px;
+  flex: none;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--rail);
   background: var(--paper);
 }
-.picker-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
-.picker-head .hint { font-size: 12px; color: var(--ink-soft); }
+.modal-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.modal-head .hint { font-size: 12px; color: var(--ink-soft); max-width: 46ch; }
+
+button.icon {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  padding: 0;
+  border-color: var(--rail-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 17px;
+}
+button.icon:hover { background: var(--paper-sunk); color: var(--ink); }
 
 .picker-list {
-  /* Tall enough to work through the list without constant scrolling, but
-     still bounded so the calendar above stays on screen. */
-  max-height: min(72vh, 680px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 10px 14px 14px;
   display: grid;
+  align-content: start;
+  /* Load-bearing. The list used to be sized by max-height, so its own height
+     was content-derived; inside the modal it is a flex child with a definite
+     height instead, and "auto" tracks then size themselves against that
+     available space — crushing 25 course groups into the visible box rather
+     than overflowing it. min-content pins each row to its content, so the
+     container scrolls. */
+  grid-auto-rows: min-content;
   gap: 10px;
 }
 
@@ -392,6 +444,7 @@ label.row input { margin: 3px 0 0; flex: none; width: 15px; height: 15px; accent
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: none;
   padding: 10px 14px;
   border-top: 1px solid var(--rail);
   background: var(--paper);
@@ -415,6 +468,139 @@ label.row input { margin: 3px 0 0; flex: none; width: 15px; height: 15px; accent
   font-size: 13px;
   color: #8c2f22;
 }
+
+/* ---------------------------------------------------------------- *
+ * Subscription dialog — shares the modal shell and header with the
+ * picker, so both toolbar buttons open the same kind of thing
+ * ---------------------------------------------------------------- */
+
+.subscribe-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: grid;
+  align-content: start;
+  /* Same definite-height trap as .picker-list. */
+  grid-auto-rows: min-content;
+  gap: 12px;
+}
+
+.subscribe-link, .subscribe-empty { display: grid; gap: 10px; }
+
+/* Which feed to subscribe to. Radios rather than a toggle: the two are not
+   more/less of one thing, they are different sources with different costs. */
+.sources {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--rail);
+  border-radius: var(--radius);
+  background: var(--rail);
+  overflow: hidden;
+}
+
+label.source-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 11px;
+  background: var(--paper);
+  cursor: pointer;
+}
+label.source-row:hover { background: var(--paper-sunk); }
+label.source-row input {
+  margin: 2px 0 0;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--navy);
+}
+label.source-row:has(input:checked) { background: var(--paper-sunk); }
+label.source-row:has(input:checked) .row-title { color: var(--navy); }
+.subscribe-empty p { margin: 0; font-size: 13px; color: var(--ink-soft); max-width: 62ch; }
+
+input.url {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--rail-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink);
+  /* The link is long by design; let it scroll rather than wrap the layout. */
+  text-overflow: ellipsis;
+}
+input.url:focus { outline: 2px solid var(--navy); outline-offset: -1px; }
+
+.subscribe-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Secondary action on a light surface.
+   Note this is *not* .ghost: that one is drawn for the navy toolbar, in white
+   on a translucent white background, and is invisible down here. */
+.secondary,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border: 1px solid var(--rail-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.secondary:hover:not(:disabled),
+.button-link:hover { background: var(--paper-sunk); }
+
+.subscribe-note { font-size: 12px; color: var(--ink-faint); }
+
+/* What the chosen link actually does with the student's data. The warn
+   variant is the one that hands a third party a record of their courses. */
+.subscribe-notice {
+  padding: 9px 11px;
+  border: 1px solid var(--rail);
+  border-left: 3px solid var(--rail-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.subscribe-notice.warn {
+  border-color: #f0d8bf;
+  border-left-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+/* The one place --accent is right outside the change feed: this *is* a
+   change, and it is the failure mode of putting the selection in the URL. */
+.subscribe-warning {
+  padding: 8px 11px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-wash);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.advanced {
+  flex: none;
+  border-top: 1px solid var(--rail);
+  padding: 10px 14px;
+  background: var(--paper);
+}
+.advanced > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.advanced .hint { font-size: 12px; color: var(--ink-soft); }
+.advanced-row { display: flex; align-items: center; gap: 8px; margin: 9px 0 4px; }
+.advanced-row input.url { font-size: 12px; }
 
 /* ---------------------------------------------------------------- *
  * Narrow screens — day columns stop working well below ~880px

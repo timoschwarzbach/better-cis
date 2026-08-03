@@ -5,3 +5,5 @@ dist/
 .DS_Store
 **/.DS_Store
 web-ext-artifacts/
+# Local miniflare state, written by `npm run dev:worker`.
+.wrangler/

@@ -1,0 +1,44 @@
+#:schema node_modules/wrangler/config-schema.json
+
+# Serves the filtered timetable feeds behind the extension's subscription links.
+#
+# No bindings, no secrets, no stored state: the course selection travels in the
+# URL, so deploying a private instance is `wrangler deploy` and nothing else.
+
+name = "better-cis-ical"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+
+[observability]
+# Off on purpose. Request logs here would carry the full URL, and the course
+# selection is *in* the URL — so switching this on turns an endpoint that
+# stores nothing into one that keeps a record of who takes which courses,
+# alongside their calendar client's IP. Turn it on only for a debugging
+# session, and say so in whatever privacy notice the deployment publishes.
+enabled = false
+
+[placement]
+# The only upstream is in Germany, so let Cloudflare run this near it rather
+# than near whichever calendar server happens to be polling.
+mode = "smart"
+
+# A separate deployment for testing, on its own hostname.
+#
+# Subscription links are long-lived by nature: a student pastes one into a
+# calendar app once and it is polled for the rest of the term. So the
+# production hostname is effectively permanent, and trying a change out on it
+# is not something that can be undone. Everything below inherits from above —
+# only the name, and therefore the URL, differs.
+#
+#   npm run dev:worker        http://localhost:8787, nothing deployed
+#   npm run deploy:worker:dev better-cis-ical-dev.<subdomain>.workers.dev
+#   npm run deploy:worker     better-cis-ical.<subdomain>.workers.dev
+[env.dev]
+name = "better-cis-ical-dev"
+
+[env.dev.observability]
+# Stated rather than inherited: whether a deployment keeps request logs should
+# not depend on how wrangler resolves environment inheritance. Turning this on
+# while debugging is defensible here in a way it is not in production — no
+# student's calendar app is subscribed to this hostname.
+enabled = false

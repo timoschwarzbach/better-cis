@@ -54,6 +54,13 @@ async function buildPreview() {
     // automated evaluate call without hitting payload limits.
     minify: true,
     logLevel: 'silent',
+    // The same defines as the extension bundles. Without these, any library
+    // module reading __SITE_CONFIG__ would throw a ReferenceError the moment
+    // the preview page loads.
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(watch ? 'development' : 'production'),
+      __SITE_CONFIG__: JSON.stringify(site),
+    },
   });
 }
 

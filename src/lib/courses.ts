@@ -13,6 +13,21 @@ import type { SkedEvent } from './sked.js';
 /** Order courses by type first, so lectures are not buried among electives. */
 const KIND_ORDER: Record<string, number> = { V: 0, P: 1, Ü: 2, S: 3, WP: 4, Vg: 5, Z: 6 };
 
+/**
+ * sked's single-letter type codes, spelled out. "V" and "WP" are the timetable
+ * system's vocabulary, not a student's. Lives here rather than in the panel
+ * because the exported calendar needs the same words.
+ */
+export const KIND_LABELS: Record<string, string> = {
+  V: 'Vorlesung',
+  WP: 'Wahlpflicht',
+  Z: 'Betreuung',
+  Vg: 'Vortrag',
+  P: 'Praktikum',
+  Ü: 'Übung',
+  S: 'Seminar',
+};
+
 function rank(kind: string): number {
   return KIND_ORDER[kind] ?? 9;
 }

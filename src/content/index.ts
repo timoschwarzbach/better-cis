@@ -48,6 +48,10 @@ async function main(): Promise<void> {
     setOriginalVisible: (visible) => {
       table.style.display = visible ? '' : 'none';
     },
+    setEndpoint: (endpoint) =>
+      api.runtime.sendMessage({ type: 'setSettings', patch: { icalEndpoint: endpoint } }),
+    setLastCopied: (url) =>
+      api.runtime.sendMessage({ type: 'setSettings', patch: { icalLastCopied: url } }),
   });
 
   const pull = async () => {

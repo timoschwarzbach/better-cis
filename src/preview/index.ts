@@ -121,6 +121,14 @@ async function preview(options: PreviewOptions = {}): Promise<string> {
     setOriginalVisible: (visible) => {
       table.style.display = visible ? '' : 'none';
     },
+    setEndpoint: (endpoint) => {
+      state.settings = { ...state.settings, icalEndpoint: endpoint };
+      calendar.update(state);
+    },
+    setLastCopied: (url) => {
+      state.settings = { ...state.settings, icalLastCopied: url };
+      calendar.update(state);
+    },
   });
   calendar.update(state);
 

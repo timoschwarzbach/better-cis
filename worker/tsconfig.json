@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // A separate program from the extension on purpose: @types/chrome and
+    // @cloudflare/workers-types both declare the global scope, and one program
+    // cannot hold both. handler.ts is checked by this config and, via the test
+    // that imports it, by the root config too — which is what keeps it to
+    // standard web APIs.
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"]
+  },
+  // Only the worker's own files are roots. The lib modules it uses are pulled
+  // in through their imports; listing ../src/lib/**/* instead would drag in
+  // storage.ts and browser.ts, which speak to the extension APIs and have no
+  // business being typechecked against a Worker global scope.
+  "include": ["src/**/*.ts"]
+}

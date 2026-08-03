@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: [master]
+    # A push to master releases, so a change that cannot affect the extension
+    # must not trigger one. worker/ ships separately via worker.yml; changes
+    # under src/lib/ are shared and deliberately still land here.
+    paths-ignore:
+      - "worker/**"
   pull_request:
   workflow_dispatch:
 

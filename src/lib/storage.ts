@@ -34,6 +34,21 @@ export interface Settings {
   useHtmlAnnotations: boolean;
   /** IANA zone used for floating times in the feed. */
   timeZone: string;
+  /**
+   * Base URL of the worker serving subscription feeds. `null` falls back to the
+   * one built into `site.config.json`, so a student who never touches this gets
+   * the deployment the extension shipped with, and anyone who wants to can run
+   * their own.
+   */
+  icalEndpoint: string | null;
+  /**
+   * The subscription link the student last copied.
+   *
+   * Kept so the dialog can point out that the selection has moved on since —
+   * the link carries the course selection, so an older one keeps serving the
+   * older courses until it is replaced in the calendar app.
+   */
+  icalLastCopied: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -47,6 +62,8 @@ export const DEFAULT_SETTINGS: Settings = {
   replaceNativeCalendar: true,
   useHtmlAnnotations: true,
   timeZone: 'Europe/Berlin',
+  icalEndpoint: null,
+  icalLastCopied: null,
 };
 
 const KEYS = {

@@ -7,18 +7,23 @@
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
+    "test": "node --test --experimental-strip-types --import ./test/ts-resolve.mjs test/*.test.ts",
+    "dev:worker": "wrangler dev --config worker/wrangler.toml --env dev",
+    "deploy:worker:dev": "wrangler deploy --config worker/wrangler.toml --env dev",
+    "deploy:worker": "wrangler deploy --config worker/wrangler.toml --env=\"\"",
     "run:firefox": "web-ext run --source-dir dist/firefox",
     "lint:firefox": "web-ext lint --source-dir dist/firefox",
     "package": "node build.mjs && node scripts/package.mjs",
     "sign": "node build.mjs && web-ext sign --source-dir dist/firefox --artifacts-dir dist --channel unlisted"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260801.1",
     "@types/chrome": "^0.0.287",
     "@types/node": "^26.1.2",
     "esbuild": "^0.24.0",
     "typescript": "^5.7.0",
-    "web-ext": "^8.3.0"
+    "web-ext": "^8.3.0",
+    "wrangler": "^4.118.0"
   }
 }
