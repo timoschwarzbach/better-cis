@@ -14,6 +14,7 @@ import {
   enrichEvents,
   parsePlanAnnotations,
   planUrls,
+  retainAcknowledged,
   type SkedEvent,
 } from '../lib/sked.js';
 import { diffSnapshots, mergeChanges } from '../lib/diff.js';
@@ -25,13 +26,17 @@ import {
   getSettings,
   getSnapshot,
   getSyncStatus,
+  getUpdate,
   setAnnotations,
   setChanges,
   setSettings,
   setSnapshot,
   setSyncStatus,
+  setUpdate,
   type Settings,
 } from '../lib/storage.js';
+import { releaseFeed } from '../lib/site.js';
+import { isNewer, parseLatestRelease } from '../lib/version.js';
 import type { Change, Snapshot } from '../lib/types.js';
 
 const ALARM_NAME = 'better-cis-refresh';
@@ -172,9 +177,21 @@ async function runSync(): Promise<SyncOutcome> {
     try {
       const html = await fetchText(urls.html, 'plan annotations');
       const annotations = parsePlanAnnotations(html);
+
+      // Dismissals have to survive the refresh: the plan keeps flagging an
+      // event for as long as it considers the change recent, so dropping them
+      // here would bring every "Gelesen" mark back within the half hour.
+      // Pruned to what is still flagged, so the list cannot grow forever.
+      const previousAnnotations = await getAnnotations();
+      const acknowledgedIds = retainAcknowledged(
+        annotations.markedIds,
+        previousAnnotations?.acknowledgedIds ?? [],
+      );
+
       await setAnnotations({
         markedIds: [...annotations.markedIds],
         notes: annotations.notes,
+        acknowledgedIds,
         ...(annotations.generatedAt ? { generatedAt: annotations.generatedAt } : {}),
       });
       flagged = applyAnnotations(events, annotations).flagged;
@@ -208,6 +225,11 @@ async function runSync(): Promise<SyncOutcome> {
   await setSyncStatus({ lastSyncAt: now, lastError: null });
   await updateBadge();
 
+  // Piggybacks on the sync rather than running its own alarm, and is throttled
+  // to once a day inside. Awaited but never allowed to throw: a release feed
+  // being down has nothing to do with whether the timetable loaded.
+  await checkForUpdate(settings, now);
+
   return {
     ok: true,
     newChanges: detected.length,
@@ -215,6 +237,43 @@ async function runSync(): Promise<SyncOutcome> {
     warnings: parsed.warnings,
     ...(degraded ? { degraded } : {}),
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Update check
+ * ------------------------------------------------------------------ */
+
+/** Nothing about a release is urgent enough to ask more than once a day. */
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Ask whether a newer release exists.
+ *
+ * This is the only request the extension makes to anywhere other than the
+ * campus system, which is why it is switched off completely — no request at
+ * all — rather than merely hidden when the student says "Nie wieder".
+ */
+async function checkForUpdate(settings: Settings, now: number): Promise<void> {
+  const feed = releaseFeed();
+  if (!feed || !settings.updateChecks) return;
+
+  const stored = await getUpdate();
+  if (stored && now - stored.checkedAt < UPDATE_CHECK_INTERVAL_MS) return;
+
+  try {
+    const body = await fetchText(feed, 'release feed');
+    const release = parseLatestRelease(body);
+    const current = api.runtime.getManifest().version;
+
+    await setUpdate({
+      checkedAt: now,
+      available: release && isNewer(release.version, current) ? release : null,
+    });
+  } catch {
+    // Record the attempt anyway, so an unreachable feed is retried tomorrow
+    // rather than on every single sync.
+    await setUpdate({ checkedAt: now, available: stored?.available ?? null });
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -294,14 +353,15 @@ async function handle(request: Request): Promise<unknown> {
       return sync();
 
     case 'getState': {
-      const [settings, snapshot, changes, status, annotations] = await Promise.all([
+      const [settings, snapshot, changes, status, annotations, update] = await Promise.all([
         getSettings(),
         getSnapshot(),
         getChanges(),
         getSyncStatus(),
         getAnnotations(),
+        getUpdate(),
       ]);
-      return { settings, snapshot, changes, status, annotations };
+      return { settings, snapshot, changes, status, annotations, update };
     }
 
     case 'discoveredPlan': {

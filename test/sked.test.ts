@@ -18,6 +18,8 @@ import {
   parsePlanRef,
   parseRoomSwap,
   planUrls,
+  retainAcknowledged,
+  unacknowledgedIds,
 } from '../src/lib/sked.ts';
 import { buildCourseList, filterSelected, groupCourses } from '../src/lib/courses.ts';
 
@@ -243,4 +245,63 @@ test('the whole fixture parses without warnings', () => {
     assert.ok(event.courseKey, 'courseKey missing');
     assert.ok(event.end > event.start, `bad duration for ${event.title}`);
   }
+});
+
+/* ------------------------------------------------------------------ *
+ * Dismissing the plan's own change flags (issue #1)
+ *
+ * The change strip has two independent sources: snapshot diffing, and the
+ * flags sked publishes in the HTML plan. "Gelesen" used to acknowledge only
+ * the first, so on a fresh install — where every mark comes from the second —
+ * the bar stayed on screen and the button appeared dead.
+ * ------------------------------------------------------------------ */
+
+test('dismissed plan flags stop being shown', () => {
+  const marked = ['227350', '227552', '227610'];
+
+  // Nothing dismissed yet: every flag is live.
+  assert.deepEqual([...unacknowledgedIds(marked, [])], marked);
+  assert.deepEqual([...unacknowledgedIds(marked)], marked);
+
+  // "Gelesen" acknowledges everything currently flagged.
+  assert.equal(unacknowledgedIds(marked, marked).size, 0);
+
+  assert.deepEqual([...unacknowledgedIds(marked, ['227552'])], ['227350', '227610']);
+});
+
+test('a flag raised after dismissal is shown again', () => {
+  // The student read the two changes the plan had, then it published a third.
+  const acknowledged = ['227350', '227552'];
+  const marked = ['227350', '227552', '227999'];
+
+  assert.deepEqual([...unacknowledgedIds(marked, acknowledged)], ['227999']);
+});
+
+test('dismissals survive a refresh but are forgotten once the plan drops them', () => {
+  const acknowledged = ['227350', '227552'];
+
+  // The plan still flags both, so both dismissals must be carried forward —
+  // otherwise the next sync resurrects marks the student already read.
+  assert.deepEqual(retainAcknowledged(['227350', '227552'], acknowledged).sort(), acknowledged);
+
+  // It has stopped flagging one: remembering that dismissal is dead weight.
+  assert.deepEqual(retainAcknowledged(['227350'], acknowledged), ['227350']);
+  assert.deepEqual(retainAcknowledged([], acknowledged), []);
+
+  // Re-flagged later counts as a new change, so it must not stay dismissed.
+  const pruned = retainAcknowledged([], acknowledged);
+  assert.deepEqual([...unacknowledgedIds(['227350'], pruned)], ['227350']);
+});
+
+test('the fixture plan flags changes that a dismissal then clears', () => {
+  // Guards the whole path against real data rather than hand-made ids.
+  const annotations = parsePlanAnnotations(planHtml);
+  const flaggedIds = [...annotations.markedIds];
+  assert.ok(flaggedIds.length > 0, 'fixture should flag something');
+
+  const active = unacknowledgedIds(flaggedIds, flaggedIds);
+  assert.equal(active.size, 0);
+
+  const { flagged } = applyAnnotations(events, { ...annotations, markedIds: active });
+  assert.equal(flagged.size, 0, 'nothing should stay marked once dismissed');
 });

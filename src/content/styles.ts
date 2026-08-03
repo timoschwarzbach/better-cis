@@ -25,6 +25,8 @@ export const CALENDAR_CSS = /* css */ `
   --rail-strong: #c3d0df;
   --accent: #e6742b;
   --accent-wash: #fdf1e8;
+  /* Today's column head. A tint rather than --navy itself: see .day.today. */
+  --today-wash: #dce9f8;
   --online: #0a5aab;
 
   --gap: 8px;
@@ -103,6 +105,14 @@ button:disabled { opacity: 0.35; cursor: default; }
   font-size: 15px;
 }
 .nav button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.24); }
+
+/* The arrows are square; this one has to fit a word. */
+.nav button.nav-today {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
 
 .spacer { flex: 1 1 auto; }
 
@@ -199,8 +209,16 @@ button:disabled { opacity: 0.35; cursor: default; }
 
 .day-date { font-size: 12px; color: var(--ink-soft); }
 
-.day.today .day-head { background: var(--navy); }
-.day.today .day-name, .day.today .day-date { color: #fff; }
+/* Today was filled with --navy, the same colour as the toolbar sitting
+   directly above the grid. Where today is the leftmost column the two blocks
+   met and read as one shape, so the bar appeared to grow a foot (#2). A tint
+   marks the day without competing with the toolbar; the heavier border is what
+   carries the emphasis the fill used to. */
+.day.today .day-head {
+  background: var(--today-wash);
+  border-bottom-color: var(--navy);
+}
+.day.today .day-date { color: var(--navy); font-weight: 600; }
 
 .day-body { padding: var(--gap); display: flex; flex-direction: column; gap: 6px; flex: 1; }
 
@@ -468,6 +486,24 @@ label.row input { margin: 3px 0 0; flex: none; width: 15px; height: 15px; accent
   font-size: 13px;
   color: #8c2f22;
 }
+
+/* Update banner. Deliberately quiet — it is housekeeping, not a timetable
+   change, so it stays away from --accent and reads as one calm line. */
+.update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--rail);
+  background: var(--paper-sunk);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.update-text { color: var(--ink); }
+.update-link { color: var(--navy); font-weight: 600; text-decoration: underline; }
+.update .link { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.update .link:hover { color: var(--navy); }
 
 /* ---------------------------------------------------------------- *
  * Subscription dialog — shares the modal shell and header with the

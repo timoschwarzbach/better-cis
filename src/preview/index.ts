@@ -41,6 +41,8 @@ export interface PreviewOptions {
    * to move.
    */
   simulateChanges?: boolean;
+  /** Pretend a newer release exists, so the update banner can be looked at. */
+  simulateUpdate?: boolean;
 }
 
 const HOST_ID = 'better-cis-preview';
@@ -98,6 +100,15 @@ async function preview(options: PreviewOptions = {}): Promise<string> {
           ...(annotations.generatedAt ? { generatedAt: annotations.generatedAt } : {}),
         }
       : null,
+    update: options.simulateUpdate
+      ? {
+          checkedAt: Date.now(),
+          available: {
+            version: '9.9.9',
+            url: 'https://github.com/StaticFX/better-cis/releases/latest',
+          },
+        }
+      : null,
   };
 
   document.getElementById(HOST_ID)?.remove();
@@ -115,7 +126,17 @@ async function preview(options: PreviewOptions = {}): Promise<string> {
     },
     acknowledgeAll: () => {
       state.changes = state.changes.map((c) => ({ ...c, acknowledged: true }));
-      state.annotations = null;
+      // Mirrors storage.acknowledgeAll: mark the plan's flags as read rather
+      // than discarding them. Dropping the annotations outright is what this
+      // harness used to do, and it hid a bug where the real extension left the
+      // change strip on screen (#1) — the preview looked correct precisely
+      // because it was doing something the extension does not.
+      if (state.annotations) {
+        state.annotations = {
+          ...state.annotations,
+          acknowledgedIds: [...state.annotations.markedIds],
+        };
+      }
       calendar.update(state);
     },
     setOriginalVisible: (visible) => {
@@ -127,6 +148,14 @@ async function preview(options: PreviewOptions = {}): Promise<string> {
     },
     setLastCopied: (url) => {
       state.settings = { ...state.settings, icalLastCopied: url };
+      calendar.update(state);
+    },
+    dismissUpdate: (version) => {
+      state.settings = { ...state.settings, dismissedUpdate: version };
+      calendar.update(state);
+    },
+    disableUpdateChecks: () => {
+      state.settings = { ...state.settings, updateChecks: false };
       calendar.update(state);
     },
   });

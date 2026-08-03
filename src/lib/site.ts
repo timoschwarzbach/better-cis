@@ -22,6 +22,11 @@ export interface SiteConfig {
    * pretending one exists.
    */
   icalEndpoint?: string;
+  /**
+   * Release API to check for updates. Empty disables the check outright — no
+   * request, no host permission, no banner.
+   */
+  releaseFeed?: string;
 }
 
 declare const __SITE_CONFIG__: SiteConfig;
@@ -41,4 +46,10 @@ export const siteConfig: SiteConfig =
 export function defaultIcalEndpoint(): string | null {
   const endpoint = siteConfig.icalEndpoint?.trim();
   return endpoint ? endpoint : null;
+}
+
+/** The configured release feed, or null when update checking is switched off. */
+export function releaseFeed(): string | null {
+  const feed = siteConfig.releaseFeed?.trim();
+  return feed ? feed : null;
 }

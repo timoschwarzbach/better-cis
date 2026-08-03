@@ -25,15 +25,17 @@ import {
   webcalUrl,
 } from '../lib/ical-link.js';
 import { defaultIcalEndpoint } from '../lib/site.js';
+import { shouldOfferUpdate } from '../lib/version.js';
 import {
   applyAnnotations,
   parseRoomSwap,
   planUrls,
+  unacknowledgedIds,
   type PlanRef,
   type SkedEvent,
 } from '../lib/sked.js';
 import { CALENDAR_CSS } from './styles.js';
-import type { Settings, StoredAnnotations, SyncStatus } from '../lib/storage.js';
+import type { Settings, StoredAnnotations, SyncStatus, UpdateInfo } from '../lib/storage.js';
 import type { Change, Course, Snapshot } from '../lib/types.js';
 
 export interface CalendarState {
@@ -42,6 +44,8 @@ export interface CalendarState {
   changes: Change<SkedEvent>[];
   status: SyncStatus;
   annotations: StoredAnnotations | null;
+  /** Result of the last release check, when one has run. */
+  update?: UpdateInfo | null;
 }
 
 /** Why one occurrence is highlighted, and the best wording available for it. */
@@ -49,6 +53,14 @@ interface Mark {
   change?: Change<SkedEvent>;
   /** sked's own description of the change, when the plan published one. */
   note?: string;
+  /**
+   * Already read.
+   *
+   * "Gelesen" answers "stop reminding me", not "this never moved" — the room
+   * really did change, and the card has to keep saying so until the change
+   * ages out of the plan. Only the strip filters on this.
+   */
+  acknowledged: boolean;
 }
 
 export interface CalendarActions {
@@ -60,6 +72,10 @@ export interface CalendarActions {
   setOriginalVisible(visible: boolean): void;
   /** Point the subscription link at a different worker; null restores the default. */
   setEndpoint(endpoint: string | null): unknown;
+  /** Hide the update banner for this version only. */
+  dismissUpdate(version: string): unknown;
+  /** Stop checking for updates at all. */
+  disableUpdateChecks(): unknown;
   /** Remember which link was copied, so a later selection change can be flagged. */
   setLastCopied(url: string): unknown;
 }
@@ -181,6 +197,18 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
   }
 
   /**
+   * The week to land on: this one when the plan covers it, otherwise the next
+   * one it does. Shared by the initial render and the "Heute" button, so the
+   * button cannot disagree with where the calendar opens — during the holidays
+   * both land on the first week back rather than on an empty grid.
+   */
+  function currentWeek(weeks: string[]): string {
+    const thisWeek = weekStartOf(dayKey(Date.now()));
+    if (weeks.includes(thisWeek)) return thisWeek;
+    return weeks.find((week) => week >= thisWeek) ?? weeks[weeks.length - 1] ?? thisWeek;
+  }
+
+  /**
    * Which occurrences to show as changed, and what to say about each.
    *
    * Two independent sources. Snapshot diffing catches anything that moved
@@ -194,24 +222,42 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     if (!state) return marked;
 
     for (const change of state.changes) {
-      if (change.acknowledged) continue;
       if (change.kind === 'removed') continue; // no card left to mark
-      marked.set(change.event.uid, { change, note: change.officialNote });
+      marked.set(change.event.uid, {
+        change,
+        note: change.officialNote,
+        acknowledged: change.acknowledged === true,
+      });
     }
 
     const annotations = state.annotations;
     if (annotations && annotations.markedIds.length > 0 && state.snapshot) {
+      // Every flag, read or not. Which of them are still unread is recorded
+      // per mark below, so the card and the strip can disagree.
       const { flagged } = applyAnnotations(state.snapshot.events, {
         markedIds: new Set(annotations.markedIds),
         notes: annotations.notes,
       });
+
+      const unread = unacknowledgedIds(annotations.markedIds, annotations.acknowledgedIds);
+      const skedIdByUid = new Map(state.snapshot.events.map((e) => [e.uid, e.skedId]));
+
       for (const [uid, note] of flagged) {
+        const skedId = skedIdByUid.get(uid);
+        const isUnread = skedId !== undefined && unread.has(skedId);
         const existing = marked.get(uid);
+
         if (existing) {
           // Keep the diff's richer classification, but take sked's wording.
           if (!existing.note && note) existing.note = note.change;
+          // Read only once *both* sources have been read: a plan flag that is
+          // still unread should keep the strip up on its own.
+          existing.acknowledged = existing.acknowledged && !isUnread;
         } else {
-          marked.set(uid, { ...(note ? { note: note.change } : {}) });
+          marked.set(uid, {
+            ...(note ? { note: note.change } : {}),
+            acknowledged: !isUnread,
+          });
         }
       }
     }
@@ -235,15 +281,12 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     const events = visibleEvents();
     const weeks = availableWeeks(events);
 
-    // Land on the current week if it has anything, else the next one that does.
-    if (weekCursor === null) {
-      const thisWeek = weekStartOf(dayKey(Date.now()));
-      weekCursor = weeks.includes(thisWeek)
-        ? thisWeek
-        : (weeks.find((w) => w >= thisWeek) ?? weeks[weeks.length - 1] ?? thisWeek);
-    }
+    if (weekCursor === null) weekCursor = currentWeek(weeks);
 
     panel.append(renderBar(weeks));
+
+    const update = renderUpdate();
+    if (update) panel.append(update);
 
     if (state.status.lastError) panel.append(el('div', 'error', state.status.lastError));
 
@@ -300,7 +343,17 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
       weekCursor = weeks[index + 1] ?? weekCursor;
       render();
     });
-    nav.append(prev, next);
+    const today = el('button', 'nav-today', 'Heute');
+    today.title = 'Zur aktuellen Woche';
+    // Disabled rather than hidden: a button that comes and goes as you page
+    // through the term makes the toolbar jump.
+    today.disabled = weekCursor === currentWeek(weeks);
+    today.addEventListener('click', () => {
+      weekCursor = currentWeek(weeks);
+      render();
+    });
+
+    nav.append(prev, next, today);
 
     const week = el('div', 'week');
     week.append(
@@ -367,6 +420,53 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
     return `vor ${Math.round(hours / 24)} Tagen aktualisiert`;
   }
 
+  /**
+   * The "a newer release exists" banner.
+   *
+   * Nothing updates a sideloaded extension by itself, so this is how a fix
+   * reaches anyone. It stays out of the way: one line, two ways to make it go
+   * away for good, and no colour that competes with a real change.
+   */
+  function renderUpdate(): HTMLElement | null {
+    const available = state?.update?.available;
+    if (
+      !available ||
+      !shouldOfferUpdate({
+        available,
+        updateChecks: state!.settings.updateChecks,
+        dismissedUpdate: state!.settings.dismissedUpdate,
+      })
+    ) {
+      return null;
+    }
+
+    const bar = el('div', 'update');
+    bar.append(el('span', 'update-text', `Version ${available.version} ist verfügbar.`));
+
+    const notes = el('a', 'update-link', 'Was ist neu?');
+    notes.href = available.url;
+    notes.target = '_blank';
+    notes.rel = 'noopener noreferrer';
+    bar.append(notes, el('div', 'spacer'));
+
+    const later = el('button', 'link', 'Später');
+    later.title = 'Bis zur nächsten Version ausblenden';
+    later.addEventListener('click', () => {
+      void actions.dismissUpdate(available.version);
+      render();
+    });
+
+    const never = el('button', 'link', 'Nie wieder');
+    never.title = 'Nicht mehr nach Updates suchen';
+    never.addEventListener('click', () => {
+      void actions.disableUpdateChecks();
+      render();
+    });
+
+    bar.append(later, never);
+    return bar;
+  }
+
   function renderPrompt(): HTMLElement {
     const wrap = el('div', 'prompt');
     const total = state!.snapshot?.events.length ?? 0;
@@ -392,7 +492,9 @@ export function createCalendar(shadow: ShadowRoot, actions: CalendarActions) {
 
   function renderChangeStrip(weekEvents: SkedEvent[]): HTMLElement | null {
     const marked = markedEvents();
-    const inWeek = weekEvents.filter((e) => marked.has(e.uid));
+    // Unread only. The cards below stay marked either way — "Gelesen" silences
+    // the reminder, it does not claim the timetable went back to normal.
+    const inWeek = weekEvents.filter((e) => marked.get(e.uid)?.acknowledged === false);
     if (inWeek.length === 0) return null;
 
     const wrap = el('div', 'changes');

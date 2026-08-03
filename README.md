@@ -26,9 +26,12 @@ navigates by week, and tells you what changed.
   parallel groups you can only attend one of, ticking one unticks the others.
 - **Shows changes.** Room swaps, reschedules, cancellations and additions, with
   the registrar's own wording where it exists — including changes made before
-  you installed the extension.
+  you installed the extension. *Gelesen* dismisses the week's summary bar; the
+  affected entries stay marked, because the room really did change.
 - **Keeps the original.** The CIS table is hidden, not removed. The *Original*
   button brings it back.
+- **Says when there is a new version**, as one line in the calendar — no browser
+  notification. See [Update checks](#update-checks).
 - **Exports the result.** *Abonnieren* produces a calendar link carrying only
   your courses, with titles a phone can actually display. See
   [Subscribing from a calendar app](#subscribing-from-a-calendar-app).
@@ -102,6 +105,35 @@ npm run sign                            # unlisted channel: signed, not publicly
 ```
 
 Then open <https://cis.nordakademie.de/> and pick your courses.
+
+## Update checks
+
+Nothing updates a sideloaded extension by itself, so a bugfix reaches nobody
+unless the extension says so. Once a day the background sync asks the GitHub
+releases API whether a newer tag exists, and if so the calendar shows one line:
+
+```
+Version 0.1.5 ist verfügbar.  Was ist neu?            Später   Nie wieder
+```
+
+A banner in the calendar, deliberately — not a browser notification. *Was ist
+neu?* opens the release page, *Später* hides that one version and a later one
+speaks up again, and *Nie wieder* stops the checking itself rather than merely
+hiding the banner.
+
+**This is the extension's only request to anywhere other than CIS.** It sends no
+user data, but GitHub necessarily sees the requesting IP, so it is worth being
+precise about:
+
+- The request happens **at most once a day**, from the background, and never
+  from the page.
+- The origin is a host permission derived from `releaseFeed` in
+  `src/site.config.json`. Blank that field and the permission disappears from
+  the manifest along with the feature — no request, no banner, nothing to
+  disclose. `npm run build` proves it: `host_permissions` drops back to CIS
+  alone.
+- The release URL is only ever used as an href after checking it points at
+  `github.com`, since it comes from an API response.
 
 ## Subscribing from a calendar app
 
@@ -362,6 +394,7 @@ src/lib/ical-link.ts  Subscription links: selection encoding, endpoint validatio
 src/lib/diff.ts       Snapshot comparison → added/removed/cancelled/moved/…
 src/lib/storage.ts    Settings, snapshots, change history
 src/lib/site.ts       Typed access to site.config.json, inlined at build time
+src/lib/version.ts    Release comparison and feed parsing for the update banner
 src/background/       Scheduled sync, badge, messaging
 src/content/          Widget takeover; calendar.ts is the view
 src/preview/          Dev-only harness (never shipped in either manifest)

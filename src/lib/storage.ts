@@ -49,6 +49,17 @@ export interface Settings {
    * older courses until it is replaced in the calendar app.
    */
   icalLastCopied: string | null;
+  /**
+   * Ask GitHub, at most once a day, whether a newer release exists.
+   *
+   * On by default because nothing else updates a sideloaded extension — a
+   * bugfix that ships to nobody is not a fix. It is the extension's only
+   * outbound request to anywhere other than CIS, so "Nie wieder" turns it off
+   * for good rather than merely hiding the banner.
+   */
+  updateChecks: boolean;
+  /** Version whose banner was dismissed; a newer one shows again. */
+  dismissedUpdate: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -64,6 +75,8 @@ export const DEFAULT_SETTINGS: Settings = {
   timeZone: 'Europe/Berlin',
   icalEndpoint: null,
   icalLastCopied: null,
+  updateChecks: true,
+  dismissedUpdate: null,
 };
 
 const KEYS = {
@@ -73,7 +86,28 @@ const KEYS = {
   annotations: 'annotations',
   lastError: 'lastError',
   lastSyncAt: 'lastSyncAt',
+  update: 'update',
 } as const;
+
+/**
+ * Result of the last release check.
+ *
+ * `checkedAt` is written even when nothing newer exists — it is what keeps the
+ * check down to once a day rather than once per sync.
+ */
+export interface UpdateInfo {
+  checkedAt: number;
+  available: { version: string; url: string } | null;
+}
+
+export async function getUpdate(): Promise<UpdateInfo | null> {
+  const stored = await api.storage.local.get(KEYS.update);
+  return (stored[KEYS.update] as UpdateInfo | undefined) ?? null;
+}
+
+export async function setUpdate(update: UpdateInfo): Promise<void> {
+  await api.storage.local.set({ [KEYS.update]: update });
+}
 
 /**
  * sked's own change flags, as read from the HTML plan. Stored separately from
@@ -85,6 +119,14 @@ export interface StoredAnnotations {
   markedIds: string[];
   notes: { date: string; time: string; course: string; change: string }[];
   generatedAt?: string;
+  /**
+   * sked ids the student has dismissed.
+   *
+   * Kept apart from `markedIds` because the two answer different questions:
+   * the plan says what changed, this says what has been read. Optional, since
+   * annotations stored by an earlier version will not carry it.
+   */
+  acknowledgedIds?: string[];
 }
 
 export async function getAnnotations(): Promise<StoredAnnotations | null> {
@@ -131,6 +173,16 @@ export async function setChanges(changes: Change[]): Promise<void> {
 export async function acknowledgeAll(): Promise<Change[]> {
   const changes = (await getChanges()).map((c) => ({ ...c, acknowledged: true }));
   await setChanges(changes);
+
+  // The change strip draws on two independent sources, and acknowledging only
+  // the diffed ones is why "Gelesen" used to leave the bar on screen: on a
+  // fresh install every mark comes from the plan's own flags, so nothing
+  // visible happened at all.
+  const annotations = await getAnnotations();
+  if (annotations) {
+    await setAnnotations({ ...annotations, acknowledgedIds: [...annotations.markedIds] });
+  }
+
   return changes;
 }
 

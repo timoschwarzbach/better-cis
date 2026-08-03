@@ -52,6 +52,10 @@ async function main(): Promise<void> {
       api.runtime.sendMessage({ type: 'setSettings', patch: { icalEndpoint: endpoint } }),
     setLastCopied: (url) =>
       api.runtime.sendMessage({ type: 'setSettings', patch: { icalLastCopied: url } }),
+    dismissUpdate: (version) =>
+      api.runtime.sendMessage({ type: 'setSettings', patch: { dismissedUpdate: version } }),
+    disableUpdateChecks: () =>
+      api.runtime.sendMessage({ type: 'setSettings', patch: { updateChecks: false } }),
   });
 
   const pull = async () => {

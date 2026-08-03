@@ -64,6 +64,24 @@ async function buildPreview() {
   });
 }
 
+/**
+ * Host permission for the release feed, as a one-or-zero element list.
+ *
+ * This is the extension's only request to anywhere other than the campus
+ * system, so it is worth being narrow about: the permission covers exactly the
+ * configured origin, and disappears entirely when no feed is set.
+ */
+function releaseOrigin(site) {
+  const feed = site.releaseFeed?.trim();
+  if (!feed) return [];
+  try {
+    return [`${new URL(feed).origin}/*`];
+  } catch {
+    console.warn(`\n  ⚠  site.config.json releaseFeed is not a URL: ${feed}\n`);
+    return [];
+  }
+}
+
 function manifestFor(target) {
   const isFirefox = target === 'firefox';
 
@@ -73,7 +91,9 @@ function manifestFor(target) {
     version: pkg.version,
     description: pkg.description,
     permissions: ['storage', 'alarms'],
-    host_permissions: site.origins,
+    // The release feed's origin is requested only when one is configured, so a
+    // build with update checking switched off asks for nothing beyond CIS.
+    host_permissions: [...site.origins, ...releaseOrigin(site)],
     action: {
       default_title: 'better-cis',
       ...(existsSync(join(root, 'src/popup/index.html'))

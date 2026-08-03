@@ -6,5 +6,7 @@
   "contentScriptMatches": ["https://cis.nordakademie.de/*"],
   "defaultTimeZone": "Europe/Berlin",
   "_icalEndpoint": "Base URL of a deployed worker/ instance, e.g. https://better-cis-ical.<subdomain>.workers.dev. Prefills the subscription dialog; students can point at their own. Empty means the dialog asks for one.",
-  "icalEndpoint": ""
+  "icalEndpoint": "",
+  "_releaseFeed": "Release API this build checks for updates, at most once a day. Its origin becomes a host permission. Empty disables update checking entirely — no request, no permission, no banner.",
+  "releaseFeed": "https://api.github.com/repos/StaticFX/better-cis/releases/latest"
 }

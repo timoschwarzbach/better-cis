@@ -333,6 +333,39 @@ function decodeEntities(text: string): string {
 }
 
 /**
+ * sked ids still worth showing as changed.
+ *
+ * The plan's flags are a second source of marks alongside snapshot diffing, and
+ * an independent one: sked keeps flagging an event for as long as it considers
+ * the change recent. So "read" has to be remembered separately, or the next
+ * sync brings the same marks straight back and dismissing them looks broken.
+ */
+export function unacknowledgedIds(
+  markedIds: Iterable<string>,
+  acknowledgedIds: Iterable<string> = [],
+): Set<string> {
+  const acknowledged = new Set(acknowledgedIds);
+  const active = new Set<string>();
+  for (const id of markedIds) if (!acknowledged.has(id)) active.add(id);
+  return active;
+}
+
+/**
+ * Which dismissals are still worth storing.
+ *
+ * Once the plan stops flagging an event, remembering that someone dismissed it
+ * is dead weight — and were the same id flagged again later, that is a new
+ * change and should be shown rather than silently swallowed.
+ */
+export function retainAcknowledged(
+  markedIds: Iterable<string>,
+  acknowledgedIds: Iterable<string>,
+): string[] {
+  const flagged = new Set(markedIds);
+  return [...new Set(acknowledgedIds)].filter((id) => flagged.has(id));
+}
+
+/**
  * Read a room substitution out of sked's change wording.
  *
  * The published form is "[H] A105 ersetzt durch [H] H007." — the bracketed
