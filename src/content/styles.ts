@@ -187,7 +187,8 @@ button:disabled { opacity: 0.35; cursor: default; }
 }
 
 .day {
-  background: var(--paper);
+  background-image: url("https://www.nordakademie.de/hs-fs/hubfs/Website%20Relaunch%202022/Header%20und%20Hintergrundbilder/TEAM_NAK_2025/2024_Sauer_Joachim_ohne_web_DSC7615.jpg");
+  background-size: cover;
   display: flex;
   flex-direction: column;
   min-height: 120px;
